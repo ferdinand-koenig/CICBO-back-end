@@ -110,7 +110,6 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                             notExisting = true;
                             callback(null);
                         }
-
                     })
                 },
                 // Insert some documents
@@ -130,32 +129,85 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 }
             ],
             (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                //console.table(result);
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
-                    console.log(value);
                     if(typeof value !== 'undefined'){
-                        console.log("triggered!");
                         sendResponse(res, value);
                     }
                 });
             }
         );
-        //class is inperformant! ~ 11 sec for post
+        //class is inperformant! ~ 11 sec for post -- now 0,5 - 0,7
     }else{
         console.log("Not valid room");
         sendResponse(res, new HTMLStatus(400, "Room does not have right syntax."));
     }
 });
-/*app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
+app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
     if(isNormalInteger(req.params.roomNr)){
-        console.log("number");
+        let collection: any, mongoClient: any;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        collection = client.db(dbName).collection(collectionNameRoom);
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    collection.deleteOne({number: parseInt(req.params.roomNr)}, function(err: any, obj: any) {
+                        assert.strictEqual(err, null) // if (err) throw err;
+                        console.log("1 document deleted");
+                        callback(null);
+                    });
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                sendResponse(res, new HTMLStatus(204, "Room deleted."));
+            }
+        );
     }else{
-        sendResponse(res, {"code"})
+        sendResponse(res, new HTMLStatus(400, "Invalid room number."));
     }
-    res.sendStatus(204);
-});*/
+});
+app.get('/room', jsonParser, (req: Request, res: Response) => {
+    let collection: any, mongoClient: any;
+    async.series(
+        [
+            // Establish Covalent Analytics MongoDB connection
+            (callback: Function) => {
+                MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                    assert.strictEqual(err, null);
+
+                    mongoClient = client;
+                    collection = client.db(dbName).collection(collectionNameRoom);
+                    callback(null);
+                });
+            },
+            (callback: Function) => {
+                collection.find({}).toArray((err: any, docs: any) => {
+                    assert.strictEqual(err, null);
+                    docs.forEach((value: any) => {
+                        delete value._id
+                    });
+                    callback(null, docs.sort((n1: any, n2: any)=> n1.number - n2.number));
+                })
+            }
+        ],
+        (err: any, result: Array<any>) => { //oder () =>
+            mongoClient.close();
+            console.log("Connection closed.");
+            sendResponse(res, new HTMLStatus(200, result[1]));
+        }
+    );
+})
 
 // catch 404 and forward to error handler
 app.use(function(req: Request, res: Response, next: NextFunction) {
