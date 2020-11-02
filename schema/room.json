@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://CICBO.com/room.json",
+  "title": "Room",
+  "type": "object",
+  "required": [
+    "number",
+    "name"
+  ],
+  "properties": {
+    "number": {
+      "$id": "#root/number",
+      "title": "Number",
+      "type": "integer",
+      "default": 0
+    },
+    "name": {
+      "$id": "#root/name",
+      "title": "Name",
+      "type": "string",
+      "default": ""
+    }
+  },
+  "additionalProperties": false
+}

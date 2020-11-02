@@ -20,36 +20,12 @@ let assert = require('assert');
 const MongoClient = require('mongodb').MongoClient;
 const dbName = "entries";
 const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mongodb.net/" + dbName + "?retryWrites=true&w=majority";
-//const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 const collectionNameGuest = "guest",
     collectionNameRoom = "room";
 
 //schema
-const roomSchema = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://CICBO.com/room.json",
-    "title": "Room",
-    "type": "object",
-    "required": [
-        "number",
-        "name"
-    ],
-    "properties": {
-        "number": {
-            "$id": "#root/number",
-            "title": "Number",
-            "type": "integer",
-            "default": 0
-        },
-        "name": {
-            "$id": "#root/name",
-            "title": "Name",
-            "type": "string",
-            "default": ""
-        }
-    },
-    "additionalProperties": false
-}
+import roomSchema from './schema/room.json';
+import guestSchema from './schema/guest.json';
 
 //classes
 class HTMLStatus{
@@ -76,6 +52,76 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
 app.post('/guest', jsonParser, (req: Request, res: Response) => {
+    let guest = req.body;
+    if(!validate(guest, guestSchema, {required: true}).valid){
+        console.log("Not valid guest (Schema)");
+        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
+    }else if(!guest.mail || !guest.phone){
+        console.log("Not valid guest (missing mail or phone)");
+        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
+    }else{
+        console.log("Valid new room.");
+        let guestCollection: any, roomCollection: any, mongoClient: any, existing: boolean;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        callback(null);
+                    });
+                },
+                //find room in db
+                (callback: Function) => {
+                    roomCollection.find({"number": guest.room.number}).toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        if(docs.length!=0){
+                            console.log("Found room in database!");
+                            existing = true;
+                            callback(null);
+                        }else{
+                            existing = false;
+                            callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                        }
+                    })
+                },
+                //calculate ID and insert
+                (callback: Function) => {
+                    if(existing) {
+                        guestCollection.find({}).toArray((err: any, docs: any) => {
+                            assert.strictEqual(err, null);
+                            guest.id = docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1;
+                            console.log("Calculated new ID " + guest.id);
+                            guestCollection.insertOne(
+                                guest,
+                                (err: any) => {
+                                    assert.strictEqual(err, null);
+                                    console.log("Guest created.");
+                                    callback(null, new HTMLStatus(201, "Guest created."));
+                                }
+                            )
+                        });
+                    }else{
+                        callback(null);
+                    }
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(typeof value !== 'undefined'){
+                        sendResponse(res, value);
+                    }
+                });
+            }
+        );
+    }
+
   //check room
   //gen id
   //add id and modify room; insert
@@ -115,10 +161,12 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 // Insert some documents
                 (callback: Function) => {
                     if (notExisting) {
+                        let room = req.body;
+                        room.active = true;
                         collection.insertOne(
-                            req.body,
+                            room,
                             (err: any) => {
-                                //assert.strictEqual(err, null);
+                                assert.strictEqual(err, null);
                                 console.log("Room created.");
                                 callback(null, new HTMLStatus(201, "Room created."));
                             }
