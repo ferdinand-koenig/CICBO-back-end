@@ -114,7 +114,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
-                    if(typeof value !== 'undefined'){
+                    if(value){
                         sendResponse(res, value);
                     }
                 });
@@ -154,30 +154,14 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        (err: any, result: Array<any>) => { //oder () =>
+        () => { //oder (err: any, result: Array<any>) =>
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, guests));
         }
     );
-    //---
-    /*MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
-        assert.strictEqual(err, null);
-        client.db(dbName).collection(collectionNameGuest).find({}).toArray((err: any, docs: any) => {
-            assert.strictEqual(err, null);
-            docs.forEach((value: any) => {
-                delete value._id;
-                client.db(dbName).collection(collectionNameRoom).findOne({number: value.room.number}).then((room: any) => {
-
-                });
-                value.room.name = room.name;
-                value.room.active = room.active;
-            });
-            client.close();
-            sendResponse(res, new HTMLStatus(200, docs.sort((n1: any, n2: any)=> n1.id - n2.id)))
-        });
-    });*/
 })
+//!!! sorting auf DB?
 
 app.post('/room', jsonParser, (req: Request, res: Response) => {
     console.log("----- NEW POST /room -----")
@@ -232,7 +216,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
-                    if(typeof value !== 'undefined'){
+                    if(value){
                         sendResponse(res, value);
                     }
                 });
@@ -246,7 +230,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
 });
 app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
     if(isNormalInteger(req.params.roomNr)){
-        let collection: any, mongoClient: any;
+        let roomCollection: any, guestCollection: any, mongoClient: any, objRes: any, roomNr=parseInt(req.params.roomNr);
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -255,22 +239,40 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        collection = client.db(dbName).collection(collectionNameRoom);
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
                         callback(null);
                     });
                 },
                 (callback: Function) => {
-                    collection.deleteOne({number: parseInt(req.params.roomNr)}, function(err: any, obj: any) {
-                        assert.strictEqual(err, null) // if (err) throw err;
-                        console.log("1 document deleted");
-                        callback(null);
+                    guestCollection.findOne({room: {number: roomNr}}).then((doc: any) => {
+                        objRes=doc;
+                        callback(null)
                     });
+                },
+                (callback: Function) => {
+                    if(objRes){
+                        roomCollection.findOneAndUpdate({number: roomNr}, {$set: {active: false}}).then(() => {
+                            console.log("set to inactive");
+                            callback(null, new HTMLStatus(202, "Set active-flag to false"));
+                        })
+                    } else {
+                        roomCollection.deleteOne({number: roomNr}, function (err: any, obj: any) {
+                            assert.strictEqual(err, null) // if (err) throw err;
+                            console.log("1 document deleted");
+                            callback(null, new HTMLStatus(204, "Room deleted."));
+                        });
+                    }
                 }
             ],
             (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
                 mongoClient.close();
                 console.log("Connection closed.")
-                sendResponse(res, new HTMLStatus(204, "Room deleted."));
+                result.forEach(value => {
+                    if(value){
+                        sendResponse(res, value);
+                    }
+                });
             }
         );
     }else{
