@@ -123,20 +123,60 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
     }
 })
 app.get('/guest', jsonParser, (req: Request, res: Response) => {
-    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+    let guestCollection: any, roomCollection: any, mongoClient: any, guests: any;
+    async.series(
+        [
+            // Establish Covalent Analytics MongoDB connection
+            (callback: Function) => {
+                MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                    assert.strictEqual(err, null);
+
+                    mongoClient = client;
+                    roomCollection = client.db(dbName).collection(collectionNameRoom);
+                    guestCollection = client.db(dbName).collection(collectionNameGuest);
+                    callback(null);
+                });
+            },
+            (callback: Function) => {
+                guestCollection.find({}).toArray((err: any, docs: any) => {
+                    assert.strictEqual(err, null);
+                    guests = docs;
+                    let n=0;
+                    guests.forEach((value: any) => {
+                        delete value._id;
+                        roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                            value.room.name = doc.name;
+                            value.room.active = doc.active;
+                            if(++n == guests.length) callback(null);
+                        });
+                    });
+                    if(guests.length === 0) callback(null);
+                });
+            }
+        ],
+        (err: any, result: Array<any>) => { //oder () =>
+            mongoClient.close();
+            console.log("Connection closed.");
+            sendResponse(res, new HTMLStatus(200, guests));
+        }
+    );
+    //---
+    /*MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
         assert.strictEqual(err, null);
         client.db(dbName).collection(collectionNameGuest).find({}).toArray((err: any, docs: any) => {
             assert.strictEqual(err, null);
             docs.forEach((value: any) => {
                 delete value._id;
-                let room = client.db(dbName).collection(collectionNameRoom).findOne({number: value.room.number});
+                client.db(dbName).collection(collectionNameRoom).findOne({number: value.room.number}).then((room: any) => {
+
+                });
                 value.room.name = room.name;
                 value.room.active = room.active;
             });
             client.close();
             sendResponse(res, new HTMLStatus(200, docs.sort((n1: any, n2: any)=> n1.id - n2.id)))
         });
-    });
+    });*/
 })
 
 app.post('/room', jsonParser, (req: Request, res: Response) => {
