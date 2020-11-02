@@ -123,7 +123,20 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
     }
 })
 app.get('/guest', jsonParser, (req: Request, res: Response) => {
-
+    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+        assert.strictEqual(err, null);
+        client.db(dbName).collection(collectionNameGuest).find({}).toArray((err: any, docs: any) => {
+            assert.strictEqual(err, null);
+            docs.forEach((value: any) => {
+                delete value._id;
+                let room = client.db(dbName).collection(collectionNameRoom).findOne({number: value.room.number});
+                value.room.name = room.name;
+                value.room.active = room.active;
+            });
+            client.close();
+            sendResponse(res, new HTMLStatus(200, docs.sort((n1: any, n2: any)=> n1.id - n2.id)))
+        });
+    });
 })
 
 app.post('/room', jsonParser, (req: Request, res: Response) => {
@@ -242,7 +255,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                 collection.find({}).toArray((err: any, docs: any) => {
                     assert.strictEqual(err, null);
                     docs.forEach((value: any) => {
-                        delete value._id
+                        delete value._id;
                     });
                     callback(null, docs.sort((n1: any, n2: any)=> n1.number - n2.number));
                 })
