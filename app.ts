@@ -94,10 +94,10 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                     if(existing) {
                         guestCollection.find({}).toArray((err: any, docs: any) => {
                             assert.strictEqual(err, null);
-                            guest.id = docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1;
+                            let id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
                             console.log("Calculated new ID " + guest.id);
                             guestCollection.insertOne(
-                                guest,
+                                Object.assign(id, guest),
                                 (err: any) => {
                                     assert.strictEqual(err, null);
                                     console.log("Guest created.");
@@ -121,10 +121,9 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
             }
         );
     }
+})
+app.get('/guest', jsonParser, (req: Request, res: Response) => {
 
-  //check room
-  //gen id
-  //add id and modify room; insert
 })
 
 app.post('/room', jsonParser, (req: Request, res: Response) => {
