@@ -1,6 +1,6 @@
 let createError = require('http-errors');
 let express = require('express');
-import { Request, Response, NextFunction, ErrorRequestHandler  } from 'express';
+import {Request, Response, NextFunction, ErrorRequestHandler, json} from 'express';
 let path = require('path');
 let cookieParser = require('cookie-parser');
 let logger = require('morgan');
@@ -51,10 +51,15 @@ const roomSchema = {
     "additionalProperties": false
 }
 
-//interfaces
-interface HTMLStatus{
-    code: number,
-    message?: string
+//classes
+class HTMLStatus{
+    code: number;
+    message?: string;
+
+    constructor(code: number, message?: string) {
+        this.code = code;
+        if(message) this.message = message;
+    }
 }
 
 // view engine setup
@@ -80,7 +85,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
     console.log("----- NEW POST /room -----")
     if(validate(req.body, roomSchema, {required: true}).valid) {
         console.log("Valid new room.");
-        let collection: any, mongoClient: any, notExisting: boolean, status: HTMLStatus = <HTMLStatus>{};
+        let collection: any, mongoClient: any, notExisting: boolean;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -100,10 +105,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                         if(docs.length!=0){
                             console.log("Found in database!");
                             notExisting = false;
-                            status.code = 409;
-                            status.message = "Room with this number already exists"
-                            //res.status(409).send('Room with this number already exists');
-                            callback(null, status);
+                            callback(null, new HTMLStatus(409, "Room with this number already exists"));
                         }else{
                             notExisting = true;
                             callback(null);
@@ -119,9 +121,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                             (err: any) => {
                                 //assert.strictEqual(err, null);
                                 console.log("Room created.");
-                                status.code = 201;
-                                status.message = "Room created"
-                                callback(null, status);
+                                callback(null, new HTMLStatus(201, "Room created."));
                             }
                         )
                     }else{
@@ -130,7 +130,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 }
             ],
             (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                console.table(result);
+                //console.table(result);
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -142,11 +142,20 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 });
             }
         );
+        //class is inperformant! ~ 11 sec for post
     }else{
         console.log("Not valid room");
-        sendResponse(res, {"code": 400, "message": "Room does not have right syntax."});
+        sendResponse(res, new HTMLStatus(400, "Room does not have right syntax."));
     }
 });
+/*app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
+    if(isNormalInteger(req.params.roomNr)){
+        console.log("number");
+    }else{
+        sendResponse(res, {"code"})
+    }
+    res.sendStatus(204);
+});*/
 
 // catch 404 and forward to error handler
 app.use(function(req: Request, res: Response, next: NextFunction) {
@@ -165,16 +174,23 @@ app.use(function(err: any, req: Request, res: Response, next: NextFunction) {
 });
 
 //functions
-function sendResponse(res: Response, status: HTMLStatus){
+function sendResponse(res: Response, status: HTMLStatus): void{
     //res.status(200).end();
     //res.sendStatus(200);
     //res.status(201).send('Room created.');
-    if(typeof status.message === 'undefined'){
+    if(!status.message){
         res.sendStatus(status.code);
     }else{
         res.status(status.code).send(status.message);
     }
 }
 
+function isNormalInteger(str: string): boolean{
+    let n = Math.floor(Number(str));
+    return n !== Infinity && String(n) === str && n >= 0;
+}
+
 
 module.exports = app;
+
+//what is not checked (semicolons, return types of functions)
