@@ -1,21 +1,20 @@
-var assert = require('assert');
+let createError = require('http-errors');
+let express = require('express');
+import { Request, Response, NextFunction, ErrorRequestHandler  } from 'express';
+let path = require('path');
+let cookieParser = require('cookie-parser');
+let logger = require('morgan');
 
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+let indexRouter = require('./routes/index');
+let usersRouter = require('./routes/users');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-
-var app = express();
+let app = express();
 
 //new stuff
 const jsonParser = require('body-parser').json(); //vllt express.json()?
 let validate = require('jsonschema').validate;
-var async = require('async');
-var assert = require('assert');
+let async = require('async');
+let assert = require('assert');
 
 //mongo
 const MongoClient = require('mongodb').MongoClient;
@@ -25,7 +24,38 @@ const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mong
 const collectionNameGuest = "guest",
     collectionNameRoom = "room";
 
+//schema
+const roomSchema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://CICBO.com/room.json",
+    "title": "Room",
+    "type": "object",
+    "required": [
+        "number",
+        "name"
+    ],
+    "properties": {
+        "number": {
+            "$id": "#root/number",
+            "title": "Number",
+            "type": "integer",
+            "default": 0
+        },
+        "name": {
+            "$id": "#root/name",
+            "title": "Name",
+            "type": "string",
+            "default": ""
+        }
+    },
+    "additionalProperties": false
+}
 
+//interfaces
+interface HTMLStatus{
+    code: number,
+    message?: string
+}
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -40,45 +70,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-app.post('/guest', jsonParser, (req, res) => {
+app.post('/guest', jsonParser, (req: Request, res: Response) => {
   //check room
   //gen id
   //add id and modify room; insert
 })
 
-app.post('/room', jsonParser, (req, res) => {
-    if(validate(req.body, {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "$id": "https://CICBO.com/room.json",
-        "title": "Room",
-        "type": "object",
-        "required": [
-            "number",
-            "name"
-        ],
-        "properties": {
-            "number": {
-                "$id": "#root/number",
-                "title": "Number",
-                "type": "integer",
-                "default": 0
-            },
-            "name": {
-                "$id": "#root/name",
-                "title": "Name",
-                "type": "string",
-                "default": ""
-            }
-        },
-        "additionalProperties": false
-    }, {required: true}).valid) {
+app.post('/room', jsonParser, (req: Request, res: Response) => {
+    console.log("----- NEW POST /room -----")
+    if(validate(req.body, roomSchema, {required: true}).valid) {
         console.log("Valid new room.");
-        let collection, mongoClient;
+        let collection: any, mongoClient: any, notExisting: boolean, status: HTMLStatus = <HTMLStatus>{};
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback) => {
-                    MongoClient.connect(uri, {native_parser:true, useUnifiedTopology: true}, (err, client) => {
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
@@ -86,63 +93,68 @@ app.post('/room', jsonParser, (req, res) => {
                         callback(null);
                     });
                 },
-                // Insert some documents
-                (callback) => {
-                    collection.insertOne(
-                        req.body,
-                        (err) => {
-                            assert.strictEqual(err, null);
+                //find document in db
+                (callback: Function) => {
+                    collection.find({"number": req.body.number}).toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        if(docs.length!=0){
+                            console.log("Found in database!");
+                            notExisting = false;
+                            status.code = 409;
+                            status.message = "Room with this number already exists"
+                            //res.status(409).send('Room with this number already exists');
+                            callback(null, status);
+                        }else{
+                            notExisting = true;
                             callback(null);
                         }
-                    )
+
+                    })
                 },
-                // Find some documents
-                /*(callback) => {
-                  mongodb.collection('sandbox').find({}).toArray(function(err, docs) {
-                    assert.equal(err, null);
-                    console.dir(docs);
-                    callback(null);
-                  });
-                }*/
+                // Insert some documents
+                (callback: Function) => {
+                    if (notExisting) {
+                        collection.insertOne(
+                            req.body,
+                            (err: any) => {
+                                //assert.strictEqual(err, null);
+                                console.log("Room created.");
+                                status.code = 201;
+                                status.message = "Room created"
+                                callback(null, status);
+                            }
+                        )
+                    }else{
+                        callback(null);
+                    }
+                }
             ],
-            () => {
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                console.table(result);
                 mongoClient.close();
                 console.log("Connection closed.")
+                result.forEach(value => {
+                    console.log(value);
+                    if(typeof value !== 'undefined'){
+                        console.log("triggered!");
+                        sendResponse(res, value);
+                    }
+                });
             }
         );
-        //res.status(200).end();
-        res.sendStatus(200);
-        // === res.status(200).send('OK')
     }else{
         console.log("Not valid room");
-        res.sendStatus(405); //check code
+        sendResponse(res, {"code": 400, "message": "Room does not have right syntax."});
     }
-
-  /*console.log("check");
-  if(validate(req.body, {
-        "number": "string",
-        "name": "string"
-      }, {required: true}).valid){
-    client.connect(err => {
-      const collection = client.db(dbName).collection(collectionNameRoom);
-      // perform actions on the collection object
-      collection.insertOne(req.body, function (err, res) {
-        if (err) throw err;
-        console.log("1 document inserted: " + req.body.toString());
-      });
-    }).then(()=> client.close());
-  }else{
-    //error
-  }*/
 });
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function(req: Request, res: Response, next: NextFunction) {
   next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function(err: any, req: Request, res: Response, next: NextFunction) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -151,5 +163,18 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+//functions
+function sendResponse(res: Response, status: HTMLStatus){
+    //res.status(200).end();
+    //res.sendStatus(200);
+    //res.status(201).send('Room created.');
+    if(typeof status.message === 'undefined'){
+        res.sendStatus(status.code);
+    }else{
+        res.status(status.code).send(status.message);
+    }
+}
+
 
 module.exports = app;
