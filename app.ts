@@ -19,6 +19,8 @@ let assert = require('assert');
 //mongo
 const MongoClient = require('mongodb').MongoClient;
 const dbName = "entries";
+//outsourcen, sodass 1. Mongo eigenen Klasse?
+// 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mongodb.net/" + dbName + "?retryWrites=true&w=majority";
 const collectionNameGuest = "guest",
     collectionNameRoom = "room";
@@ -54,9 +56,9 @@ app.use('/users', usersRouter);
 app.post('/guest', jsonParser, (req: Request, res: Response) => {
     let guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
-        console.log("Not valid guest (Schema)");
+        console.log("Not valid guest (schema)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
-    }else if(!guest.mail || !guest.phone){
+    }else if(!(guest.mail || guest.phone)){
         console.log("Not valid guest (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
     }else{
@@ -247,14 +249,22 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                 (callback: Function) => {
                     guestCollection.findOne({room: {number: roomNr}}).then((doc: any) => {
                         objRes=doc;
-                        callback(null)
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    roomCollection.findOne({number: roomNr}).then((doc: any) => {
+                        if(!doc){
+                            callback(new Error('Room not found in DB!'), new HTMLStatus(404, "Room not found!"));
+                        } else
+                            callback(null);
                     });
                 },
                 (callback: Function) => {
                     if(objRes){
                         roomCollection.findOneAndUpdate({number: roomNr}, {$set: {active: false}}).then(() => {
                             console.log("set to inactive");
-                            callback(null, new HTMLStatus(202, "Set active-flag to false"));
+                            callback(null, new HTMLStatus(202, "Set active-flag to false."));
                         })
                     } else {
                         roomCollection.deleteOne({number: roomNr}, function (err: any, obj: any) {
@@ -269,9 +279,8 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
-                    if(value){
+                    if(value)
                         sendResponse(res, value);
-                    }
                 });
             }
         );
@@ -299,7 +308,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                     docs.forEach((value: any) => {
                         delete value._id;
                     });
-                    callback(null, docs.sort((n1: any, n2: any)=> n1.number - n2.number));
+                    callback(null, docs.sort((n1: any, n2: any) => n1.number - n2.number));
                 })
             }
         ],
