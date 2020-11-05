@@ -17,6 +17,7 @@ let async = require('async');
 let assert = require('assert');
 
 //mongo
+// export settings as json
 const MongoClient = require('mongodb').MongoClient;
 const dbName = "entries";
 //outsourcen, sodass 1. Mongo eigenen Klasse?
@@ -247,17 +248,17 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                     });
                 },
                 (callback: Function) => {
-                    guestCollection.findOne({room: {number: roomNr}}).then((doc: any) => {
-                        objRes=doc;
-                        callback(null);
-                    });
-                },
-                (callback: Function) => {
                     roomCollection.findOne({number: roomNr}).then((doc: any) => {
                         if(!doc){
                             callback(new Error('Room not found in DB!'), new HTMLStatus(404, "Room not found!"));
                         } else
                             callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    guestCollection.findOne({room: {number: roomNr}}).then((doc: any) => {
+                        objRes=doc;
+                        callback(null);
                     });
                 },
                 (callback: Function) => {
@@ -309,7 +310,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                         delete value._id;
                     });
                     callback(null, docs.sort((n1: any, n2: any) => n1.number - n2.number));
-                })
+                });
             }
         ],
         (err: any, result: Array<any>) => { //oder () =>
