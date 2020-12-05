@@ -66,7 +66,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
         console.log("Not valid guest (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
     }else{
-        console.log("Valid new room.");
+        console.log("Valid new guest.");
         let guestCollection: any, roomCollection: any, mongoClient: any, existing: boolean;
         async.series(
             [
@@ -259,6 +259,71 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
         );
     }else{
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }
+});
+app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
+    const guest = req.body;
+    if(!validate(guest, guestSchema, {required: true}).valid){
+        console.log("Not valid guest (schema)");
+        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
+    }else if(!(guest.mail || guest.phone)){
+        console.log("Not valid guest (missing mail or phone)");
+        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
+    }else{
+        console.log("Valid guest update.");
+        let guestCollection: any, roomCollection: any, mongoClient: any, roomExisting: boolean;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        callback(null);
+                    });
+                },
+                //find room in db
+                (callback: Function) => {
+                    roomCollection.find({"number": guest.room.number}).toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        if(docs.length!=0){
+                            console.log("Found room in database!");
+                            roomExisting = true;
+                            callback(null);
+                        }else{
+                            roomExisting = false;
+                            callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                        }
+                    })
+                },
+                //calculate ID and insert
+                (callback: Function) => {
+                    if(roomExisting) {
+                        delete guest.room;
+                        guestCollection.updateOne({id: guest.id}, {$set: guest}, (err: any, obj: any) => {
+                                assert.strictEqual(err, null);
+                                console.log("Guest updated.");
+                                callback(null, new HTMLStatus(200, "Guest updated."));
+                            }
+                        );
+                    }else{
+                        callback(null);
+                    }
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(value){
+                        sendResponse(res, value);
+                    }
+                });
+            }
+        );
     }
 });
 app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
