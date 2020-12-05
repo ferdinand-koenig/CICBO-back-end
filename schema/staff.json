@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://CICBO.com/guest.json",
+  "title": "Guest Schema",
+  "type": "object",
+  "required": [
+    "firstName",
+    "name",
+    "arrivedAt",
+    "leftAt",
+    "rooms"
+  ],
+  "properties": {
+    "firstName": {
+      "$id": "#root/firstName",
+      "title": "Firstname",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "Jane"
+      ],
+      "pattern": "^.*$"
+    },
+    "name": {
+      "$id": "#root/name",
+      "title": "Name",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "Doe"
+      ],
+      "pattern": "^.*$"
+    },
+    "mail": {
+      "$id": "#root/mail",
+      "title": "Mail",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "jane.doe@example.com"
+      ],
+      "pattern": "^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$"
+    },
+    "phone": {
+      "$id": "#root/phone",
+      "title": "Phone",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "string"
+      ],
+      "pattern": "^.*$"
+    },
+    "address": {
+      "$id": "#root/address",
+      "title": "Address",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "string"
+      ],
+      "pattern": "^.*$"
+    },
+    "arrivedAt": {
+      "$id": "#root/arrivedAt",
+      "title": "Arrivedat",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "2020-10-22 04:20"
+      ],
+      "pattern": "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]"
+    },
+    "leftAt": {
+      "$id": "#root/leftAt",
+      "title": "Leftat",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "2020-10-22 04:20"
+      ],
+      "pattern": "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]"
+    },
+    "rooms":
+    {
+      "$id": "#root/rooms",
+      "title": "Rooms",
+      "type": "array",
+      "items": [{
+        "type": "object",
+        "properties": {
+          "number": {
+            "title": "Number",
+            "type": "integer",
+            "examples": [
+              0
+            ],
+            "default": 0
+          }
+        }
+      }]
+    }
+  },
+  "additionalProperties": false
+}

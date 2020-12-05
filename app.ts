@@ -25,6 +25,8 @@ const dbName = "entries";
 // 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mongodb.net/" + dbName + "?retryWrites=true&w=majority";
 const collectionNameGuest = "guest",
+    collectionNameStaff = "staff",
+    collectionNameStaffShift = "shift",
     collectionNameRoom = "room";
 
 //schema
@@ -55,6 +57,76 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+
+//STAFF
+app.post('/staff', jsonParser, (req: Request, res: Response) => {
+    const staff = req.body;
+    if(!validate(staff, guestSchema, {required: true}).valid){
+        console.log("Not valid staff member (schema)");
+        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
+    }else if(!(staff.mail || staff.phone)){
+        console.log("Not valid staff member (missing mail or phone)");
+        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
+    }else{
+        console.log("Valid new staff member.");
+        let staffCollection: any, staffShiftCollection: any, roomCollection: any, mongoClient: any;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        staffCollection = client.db(dbName).collection(collectionNameStaff);
+                        staffShiftCollection = client.db(dbName).collection(collectionNameStaffShift);
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        callback(null);
+                    });
+                },
+                //Eig nicht notwendig, da Räume erst mit Schicht hinzugefügt werden.
+                //find rooms in db
+                (callback: Function) => {
+                    let n : number = staff.rooms.length;
+                    staff.rooms.forEach((room: any) => {
+                        roomCollection.find({"number": room}).toArray((err: any, docs: any) => {
+                            assert.strictEqual(err, null);
+                            if (docs.length == 0) {
+                                callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
+                            }
+                            if(--n === 0) callback(null);
+                        });
+                    });
+                },
+                //calculate ID and insert
+                (callback: Function) => {
+                    guestCollection.find({}).toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
+                        console.log("Calculated new ID " + guest.id);
+                        guestCollection.insertOne(
+                            Object.assign(id, guest),
+                            (err: any) => {
+                                assert.strictEqual(err, null);
+                                console.log("Guest created.");
+                                callback(null, new HTMLStatus(201, "Guest created."));
+                            }
+                        )
+                    });
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(value){
+                        sendResponse(res, value);
+                    }
+                });
+            }
+        );
+    }
+});
 
 //GUEST
 app.post('/guest', jsonParser, (req: Request, res: Response) => {
