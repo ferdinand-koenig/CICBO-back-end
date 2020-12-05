@@ -5,7 +5,9 @@
   "description": "One single shift object",
   "type": "object",
   "required": [
-    "shift"
+    "arrivedAt",
+    "leftAt",
+    "rooms"
   ],
   "properties": {
     "arrivedAt": {

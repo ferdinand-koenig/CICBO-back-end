@@ -18,7 +18,7 @@ const assert = require('assert');
 
 //mongo
 const MongoClient = require('mongodb').MongoClient;
-import dbSettings from './settings/mongo-settings-with-credentials.json';
+import dbSettings from './secrets/mongo-settings-with-credentials.json';
 //outsourcen, sodass 1. Mongo eigenen Klasse?
 // CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri +"/" + dbSettings.dbName + dbSettings.uriOptions;
@@ -156,10 +156,12 @@ app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
                     (callback: Function) => {
                         let n : number = shift.rooms.length;
                         shift.rooms.forEach((room: any) => {
-                            roomCollection.find({"number": room}).toArray((err: any, docs: any) => {
+                            roomCollection.findOne({"number": room.number}).then((err: any, doc: any) => {
                                 assert.strictEqual(err, null);
-                                if (docs.length == 0) {
+                                if (!doc) {
                                     callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
+                                }else if(!doc.active){
+                                    callback(new Error("Room " + room.number + " is not active"), new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with number " + room.number + "is inactive)"));
                                 }
                                 if(--n === 0) callback(null);
                             });
@@ -221,9 +223,13 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                 },
                 //find room in db
                 (callback: Function) => {
-                    roomCollection.find({"number": guest.room.number}).toArray((err: any, docs: any) => {
+                    roomCollection.findOne({"number": guest.room.number}).then((err: any, doc: any) => {
                         assert.strictEqual(err, null);
-                        if(docs.length!=0){
+                        if(doc!=0){
+                            if(!doc.active){
+                                existing = false;
+                                callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with this number is inactive)"));
+                            }
                             console.log("Found room in database!");
                             existing = true;
                             callback(null);
@@ -509,7 +515,6 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied."));
     }
 });
-//!!! sorting auf DB?
 
 //ROOM
 app.post('/room', jsonParser, (req: Request, res: Response) => {
