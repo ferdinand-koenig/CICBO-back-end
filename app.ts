@@ -33,6 +33,9 @@ const collectionNameGuest = "guest",
 import roomSchema from './schema/room.json';
 import guestSchema from './schema/guest.json';
 import searchFilterSchema from './schema/searchFilter.json';
+import shiftSchema from './schema/shift.json';
+import shiftsSchema from './schema/shifts.json';
+import staffSchema from './schema/staff.json';
 
 //classes
 class HTMLStatus{
@@ -61,7 +64,7 @@ app.use('/users', usersRouter);
 //STAFF
 app.post('/staff', jsonParser, (req: Request, res: Response) => {
     const staff = req.body;
-    if(!validate(staff, guestSchema, {required: true}).valid){
+    if(!validate(staff, staffSchema, {required: true}).valid){
         console.log("Not valid staff member (schema)");
         sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
     }else if(!(staff.mail || staff.phone)){
@@ -83,20 +86,6 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                         callback(null);
                     });
                 },
-                //Eig nicht notwendig, da Räume erst mit Schicht hinzugefügt werden.
-                //find rooms in db
-                /*(callback: Function) => {
-                    let n : number = staff.rooms.length;
-                    staff.rooms.forEach((room: any) => {
-                        roomCollection.find({"number": room}).toArray((err: any, docs: any) => {
-                            assert.strictEqual(err, null);
-                            if (docs.length == 0) {
-                                callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
-                            }
-                            if(--n === 0) callback(null);
-                        });
-                    });
-                },*/
                 //calculate ID and insert
                 (callback: Function) => {
                     staffCollection.find({}).toArray((err: any, docs: any) => {
@@ -142,18 +131,15 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    if(isNormalInteger(req.params.guestId)) {
-        const staff = req.body;
-        const guestId = parseInt(req.params.guestId);
-        if (!validate(staff, guestSchema, {required: true}).valid) {
-            console.log("Not valid staff member (schema)");
-            sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
-        } else if (!(staff.mail || staff.phone)) {
-            console.log("Not valid staff member (missing mail or phone)");
-            sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
+    if(isNormalInteger(req.params.staffId)) {
+        const shift = req.body;
+        const staffId = parseInt(req.params.staffId);
+        if (!validate(shift, shiftSchema, {required: true}).valid) {
+            console.log("Not valid shift (schema)");
+            sendResponse(res, new HTMLStatus(400, "shift does not have right syntax. (Schema)"));
         } else {
-            console.log("Valid new staff member.");
-            let staffCollection: any, staffShiftCollection: any, mongoClient: any;
+            console.log("Valid new shift.");
+            let staffShiftCollection: any, roomCollection: any, mongoClient: any;
             async.series(
                 [
                     // Establish Covalent Analytics MongoDB connection
@@ -165,16 +151,15 @@ app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
                             assert.strictEqual(err, null);
 
                             mongoClient = client;
-                            staffCollection = client.db(dbName).collection(collectionNameStaff);
                             staffShiftCollection = client.db(dbName).collection(collectionNameStaffShift);
+                            roomCollection = client.db(dbName).collection(collectionNameRoom);
                             callback(null);
                         });
                     },
-                    //Eig nicht notwendig, da Räume erst mit Schicht hinzugefügt werden.
                     //find rooms in db
-                    /*(callback: Function) => {
-                        let n : number = staff.rooms.length;
-                        staff.rooms.forEach((room: any) => {
+                    (callback: Function) => {
+                        let n : number = shift.rooms.length;
+                        shift.rooms.forEach((room: any) => {
                             roomCollection.find({"number": room}).toArray((err: any, docs: any) => {
                                 assert.strictEqual(err, null);
                                 if (docs.length == 0) {
@@ -183,35 +168,18 @@ app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
                                 if(--n === 0) callback(null);
                             });
                         });
-                    },*/
-                    //calculate ID and insert
-                    (callback: Function) => {
-                        staffCollection.find({}).toArray((err: any, docs: any) => {
-                            assert.strictEqual(err, null);
-                            const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                            console.log("Calculated new ID " + staff.id); //staff.id IS NOT SET
-                            staffCollection.insertOne(
-                                Object.assign(id, staff),
-                                (err: any) => {
-                                    assert.strictEqual(err, null);
-                                    console.log("Staff member created.");
-                                    callback(null);
-                                }
-                            )
-                        });
                     },
                     //add new entry in shifts
                     (callback: Function) => {
-                        const shift = {id: -1, shifts: []};
-                        shift.id = staff.id;
-                        staffShiftCollection.insertOne(
-                            shift,
-                            (err: any) => {
+                    staffShiftCollection.findOne({id: staffId}).then((doc: any) => {
+                        if(!doc) callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
+                        doc.shifts.push(shift);
+                        staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: any, obj: any) => {
                                 assert.strictEqual(err, null);
-                                console.log("Shift object created.");
-                                callback(null, new HTMLStatus(201, "Staff member created."));
-                            }
-                        );
+                                console.log("Shift added");
+                                callback(null, new HTMLStatus(201, "Shift added."));
+                            });
+                        });
                     }
                 ],
                 (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
@@ -476,7 +444,7 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                 //calculate ID and insert
                 (callback: Function) => {
                     if(roomExisting) {
-                        delete guest.room;
+                        //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
                         guestCollection.updateOne({id: guest.id}, {$set: guest}, (err: any, obj: any) => {
                                 assert.strictEqual(err, null);
                                 console.log("Guest updated.");
