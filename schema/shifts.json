@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://CICBO.com/shift.json",
-  "title": "Staff Shift Schema",
+  "$id": "https://CICBO.com/shifts.json",
+  "title": "Staff Shifts Schema",
+  "description": "Objects of this Schema are objects containing an array of shifts",
   "type": "object",
   "required": [
     "shifts"
@@ -13,49 +14,7 @@
       "type": "array",
       "items": [
         {
-          "type": "object",
-          "properties": {
-            "arrivedAt": {
-              "$id": "#root/shifts/arrivedAt",
-              "title": "Arrivedat",
-              "type": "string",
-              "default": "",
-              "examples": [
-                "2020-10-22 04:20"
-              ],
-              "pattern": "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]"
-            },
-            "leftAt": {
-              "$id": "#root/shifts/leftAt",
-              "title": "Leftat",
-              "type": "string",
-              "default": "",
-              "examples": [
-                "2020-10-22 04:20"
-              ],
-              "pattern": "[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]"
-            },
-            "rooms": {
-              "$id": "#root/shifts/rooms",
-              "title": "Rooms",
-              "type": "array",
-              "items": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "number": {
-                      "title": "Number",
-                      "type": "integer",
-                      "examples": [
-                        0
-                      ],
-                      "default": 0
-                    }
-                  }
-                }
-              ]
-            }
-          }
+          "$ref": "shift.json#"
         }
       ]
     }
