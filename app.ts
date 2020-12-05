@@ -72,7 +72,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
         sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
     }else{
         console.log("Valid new staff member.");
-        let staffCollection: any, staffShiftCollection: any, mongoClient: any;
+        let staffCollection: any, staffShiftCollection: any, mongoClient: any, id: any;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -90,8 +90,8 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                 (callback: Function) => {
                     staffCollection.find({}).toArray((err: any, docs: any) => {
                         assert.strictEqual(err, null);
-                        const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                        console.log("Calculated new ID " + staff.id); //staff.id IS NOT SET
+                        id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
+                        console.log("Calculated new ID " + id); //staff.id IS NOT SET
                         staffCollection.insertOne(
                             Object.assign(id, staff),
                             (err: any) => {
@@ -105,7 +105,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                 //add new entry in shifts
                 (callback: Function) => {
                     const shift = {id: -1, shifts: []};
-                    shift.id = staff.id;
+                    shift.id = id.id;
                     staffShiftCollection.insertOne(
                         shift,
                         (err: any) => {
@@ -243,7 +243,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                         guestCollection.find({}).toArray((err: any, docs: any) => {
                             assert.strictEqual(err, null);
                             const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                            console.log("Calculated new ID " + guest.id);
+                            console.log("Calculated new ID " + id);
                             guestCollection.insertOne(
                                 Object.assign(id, guest),
                                 (err: any) => {
