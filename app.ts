@@ -17,17 +17,11 @@ const async = require('async');
 const assert = require('assert');
 
 //mongo
-// export settings as json
 const MongoClient = require('mongodb').MongoClient;
-const dbName = "entries";
-
+import dbSettings from './settings/mongo-settings-with-credentials.json';
 //outsourcen, sodass 1. Mongo eigenen Klasse?
-// 2. Passwort outsourcen, sodass es nicht auf git landet
-const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mongodb.net/" + dbName + "?retryWrites=true&w=majority";
-const collectionNameGuest = "guest",
-    collectionNameStaff = "staff",
-    collectionNameStaffShift = "shift",
-    collectionNameRoom = "room";
+// CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
+const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri +"/" + dbSettings.dbName + dbSettings.uriOptions;
 
 //schema
 import roomSchema from './schema/room.json';
@@ -78,9 +72,9 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        staffCollection = client.db(dbName).collection(collectionNameStaff);
-                        staffShiftCollection = client.db(dbName).collection(collectionNameStaffShift);
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                         callback(null);
                     });
                 },
@@ -148,8 +142,8 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                         callback(null);
                     });
                 },
@@ -210,8 +204,8 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
                     assert.strictEqual(err, null);
 
                     mongoClient = client;
-                    roomCollection = client.db(dbName).collection(collectionNameRoom);
-                    guestCollection = client.db(dbName).collection(collectionNameGuest);
+                    roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                    guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                     callback(null);
                 });
             },
@@ -256,8 +250,8 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                         callback(null);
                     });
                 },
@@ -301,8 +295,8 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                         callback(null);
                     });
                 },
@@ -352,8 +346,8 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                         callback(null);
                     });
                 },
@@ -410,7 +404,7 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                         callback(null);
                     });
                 },
@@ -459,7 +453,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        collection = client.db(dbName).collection(collectionNameRoom);
+                        collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                         callback(null);
                     });
                 },
@@ -513,7 +507,8 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
 });
 app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
     if(isNormalInteger(req.params.roomNr)){
-        let roomCollection: any, guestCollection: any, mongoClient: any, objRes: any, roomNr=parseInt(req.params.roomNr);
+        let roomCollection: any, guestCollection: any, mongoClient: any, objRes: any;
+        const roomNr=parseInt(req.params.roomNr);
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -522,8 +517,8 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         assert.strictEqual(err, null);
 
                         mongoClient = client;
-                        roomCollection = client.db(dbName).collection(collectionNameRoom);
-                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                         callback(null);
                     });
                 },
@@ -579,7 +574,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                     assert.strictEqual(err, null);
 
                     mongoClient = client;
-                    collection = client.db(dbName).collection(collectionNameRoom);
+                    collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                     callback(null);
                 });
             },
