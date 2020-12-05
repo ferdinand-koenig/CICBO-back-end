@@ -339,6 +339,7 @@ app.use(function(err: any, req: Request, res: Response, next: NextFunction) {
 });
 
 //functions
+
 function sendResponse(res: Response, status: HTMLStatus): void{
     //res.status(200).end();
     //res.sendStatus(200);
@@ -350,6 +351,11 @@ function sendResponse(res: Response, status: HTMLStatus): void{
     }
 }
 
+/**
+ * checks if a string is an integer value
+ * @param str
+ * @returns boolean
+ */
 function isNormalInteger(str: string): boolean{
     const n = Math.floor(Number(str));
     return n !== Infinity && String(n) === str && n >= 0;
