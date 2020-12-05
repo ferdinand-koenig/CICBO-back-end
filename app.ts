@@ -100,16 +100,16 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                 },
                 //calculate ID and insert
                 (callback: Function) => {
-                    guestCollection.find({}).toArray((err: any, docs: any) => {
+                    staffCollection.find({}).toArray((err: any, docs: any) => {
                         assert.strictEqual(err, null);
                         const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                        console.log("Calculated new ID " + guest.id);
-                        guestCollection.insertOne(
-                            Object.assign(id, guest),
+                        console.log("Calculated new ID " + staff.id); //SHOULD NOT BE SET
+                        staffCollection.insertOne(
+                            Object.assign(id, staff),
                             (err: any) => {
                                 assert.strictEqual(err, null);
-                                console.log("Guest created.");
-                                callback(null, new HTMLStatus(201, "Guest created."));
+                                console.log("Staff member created.");
+                                callback(null, new HTMLStatus(201, "Staff member created."));
                             }
                         )
                     });
