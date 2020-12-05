@@ -1,25 +1,26 @@
-let createError = require('http-errors');
-let express = require('express');
+const createError = require('http-errors');
+const express = require('express');
 import {Request, Response, NextFunction, ErrorRequestHandler, json} from 'express';
-let path = require('path');
-let cookieParser = require('cookie-parser');
-let logger = require('morgan');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 
-let indexRouter = require('./routes/index');
-let usersRouter = require('./routes/users');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
 
-let app = express();
+const app = express();
 
 //new stuff
 const jsonParser = require('body-parser').json(); //vllt express.json()?
-let validate = require('jsonschema').validate;
-let async = require('async');
-let assert = require('assert');
+const validate = require('jsonschema').validate;
+const async = require('async');
+const assert = require('assert');
 
 //mongo
 // export settings as json
 const MongoClient = require('mongodb').MongoClient;
 const dbName = "entries";
+
 //outsourcen, sodass 1. Mongo eigenen Klasse?
 // 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = "mongodb+srv://CICBO-web-server:huzf0JflG28amvqf@cluster0.x7gev.mongodb.net/" + dbName + "?retryWrites=true&w=majority";
@@ -55,7 +56,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
 app.post('/guest', jsonParser, (req: Request, res: Response) => {
-    let guest = req.body;
+    const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
         console.log("Not valid guest (schema)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
@@ -97,7 +98,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                     if(existing) {
                         guestCollection.find({}).toArray((err: any, docs: any) => {
                             assert.strictEqual(err, null);
-                            let id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
+                            const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
                             console.log("Calculated new ID " + guest.id);
                             guestCollection.insertOne(
                                 Object.assign(id, guest),
@@ -124,7 +125,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
             }
         );
     }
-})
+});
 app.get('/guest', jsonParser, (req: Request, res: Response) => {
     let guestCollection: any, roomCollection: any, mongoClient: any, guests: any;
     async.series(
@@ -163,7 +164,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
             sendResponse(res, new HTMLStatus(200, guests));
         }
     );
-})
+});
 //!!! sorting auf DB?
 
 app.post('/room', jsonParser, (req: Request, res: Response) => {
@@ -200,7 +201,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 // Insert some documents
                 (callback: Function) => {
                     if (notExisting) {
-                        let room = req.body;
+                        const room = req.body;
                         room.active = true;
                         collection.insertOne(
                             room,
@@ -209,7 +210,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                                 console.log("Room created.");
                                 callback(null, new HTMLStatus(201, "Room created."));
                             }
-                        )
+                        );
                     }else{
                         callback(null);
                     }
@@ -271,7 +272,7 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         roomCollection.deleteOne({number: roomNr}, function (err: any, obj: any) {
                             assert.strictEqual(err, null) // if (err) throw err;
                             console.log("1 document deleted");
-                            callback(null, new HTMLStatus(204, "Room deleted."));
+                            callback(null, new HTMLStatus(204));
                         });
                     }
                 }
@@ -313,13 +314,13 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        (err: any, result: Array<any>) => { //oder () =>
+        (err: any, result: Array<string | undefined>) => { //oder () =>
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, result[1]));
         }
     );
-})
+});
 
 // catch 404 and forward to error handler
 app.use(function(req: Request, res: Response, next: NextFunction) {
@@ -350,7 +351,7 @@ function sendResponse(res: Response, status: HTMLStatus): void{
 }
 
 function isNormalInteger(str: string): boolean{
-    let n = Math.floor(Number(str));
+    const n = Math.floor(Number(str));
     return n !== Infinity && String(n) === str && n >= 0;
 }
 
