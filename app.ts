@@ -30,6 +30,7 @@ const collectionNameGuest = "guest",
 //schema
 import roomSchema from './schema/room.json';
 import guestSchema from './schema/guest.json';
+import searchFilterSchema from './schema/searchFilter.json';
 
 //classes
 class HTMLStatus{
@@ -55,6 +56,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
+//GUEST
 app.post('/guest', jsonParser, (req: Request, res: Response) => {
     const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
@@ -165,8 +167,148 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         }
     );
 });
+app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
+    const searchFilter = req.body;
+    if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
+        console.log("Not valid searchFilter (schema)");
+        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+    } else {
+        const sortByName : boolean = searchFilter.sortByName;
+        delete searchFilter.sortByName;
+        let guestCollection: any, roomCollection: any, mongoClient: any, guests: any;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    guestCollection.find(searchFilter).sort(sortByName ? {name: 1} : {}).toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        guests = docs;
+                        let n = 0;
+                        guests.forEach((value: any) => {
+                            delete value._id;
+                            roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                                value.room.name = doc.name;
+                                value.room.active = doc.active;
+                                if (++n == guests.length) callback(null);
+                            });
+                        });
+                        if (guests.length === 0) callback(null);
+                    });
+                }
+            ],
+            () => { //oder (err: any, result: Array<any>) =>
+                mongoClient.close();
+                console.log("Connection closed.");
+                sendResponse(res, new HTMLStatus(200, guests));
+            }
+        );
+    }
+});
+app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
+    if(isNormalInteger(req.params.guestId)) {
+        let guestCollection: any, roomCollection: any, mongoClient: any, guest: any;
+        const guestId = parseInt(req.params.guestId);
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {
+                        native_parser: true,
+                        useUnifiedTopology: true
+                    }, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        roomCollection = client.db(dbName).collection(collectionNameRoom);
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    guestCollection.findOne({id: guestId}).then((doc: any) => {
+                        if (!doc) callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                        guest=doc;
+                        delete guest._id;
+                        roomCollection.findOne({number: guest.room.number}).then((doc: any) => {
+                            guest.room.name = doc.name;
+                            guest.room.active = doc.active;
+                            callback(null, new HTMLStatus(200, guest));
+                        });
+                    });
+                }
+            ],
+            (err:any ,result:Array<HTMLStatus | undefined>) => { //oder (err: any, result: Array<any>) =>
+                mongoClient.close();
+                console.log("Connection closed.");
+                result.forEach(value => {
+                    if(value){
+                        sendResponse(res, value);
+                    }
+                });
+            }
+        );
+    }else{
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }
+});
+app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
+    if(isNormalInteger(req.params.guestId)){
+        let guestCollection: any, mongoClient: any;
+        const guestId = parseInt(req.params.guestId);
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        guestCollection = client.db(dbName).collection(collectionNameGuest);
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    guestCollection.findOne({id: guestId}).then((doc: any) => {
+                        if(!doc){
+                            callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                        } else
+                            callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    guestCollection.deleteOne({id: guestId}, function (err: any, obj: any) {
+                        assert.strictEqual(err, null) // if (err) throw err;
+                        console.log("1 document deleted");
+                        callback(null, new HTMLStatus(204));
+                    });
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(value)
+                        sendResponse(res, value);
+                });
+            }
+        );
+    }else{
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied."));
+    }
+});
 //!!! sorting auf DB?
 
+//ROOM
 app.post('/room', jsonParser, (req: Request, res: Response) => {
     console.log("----- NEW POST /room -----")
     if(validate(req.body, roomSchema, {required: true}).valid) {
