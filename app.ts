@@ -147,8 +147,8 @@ app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
                             assert.strictEqual(err, null);
 
                             mongoClient = client;
-                            staffShiftCollection = client.db(dbName).collection(collectionNameStaffShift);
-                            roomCollection = client.db(dbName).collection(collectionNameRoom);
+                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                             callback(null);
                         });
                     },
