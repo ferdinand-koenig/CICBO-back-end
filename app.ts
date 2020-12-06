@@ -128,6 +128,59 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
         );
     }
 });
+app.delete('/staff/:staffId', jsonParser, ((req: Request, res: Response) => {
+    if(isNormalInteger(req.params.staffId)){
+        let staffShiftCollection: any, staffCollection: any, mongoClient: any;
+        const staffId = parseInt(req.params.staffId);
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    staffShiftCollection.findOne({id: staffId}).then((doc: any) => {
+                        if(!doc){
+                            callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found!"));
+                        } else
+                            callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    staffShiftCollection.deleteOne({id: staffId}, function (err: any, obj: any) {
+                        if(err) callback(new Error("Error in deletion of staff member " + staffId), new HTMLStatus(500));
+                        console.log("1 document deleted");
+                        callback(null);
+                    });
+                },
+                (callback: Function) => {
+                    staffCollection.deleteOne({id: staffId}, function (err: any, obj: any) {
+                        assert.strictEqual(err, null) // if (err) throw err;
+                        console.log("1 document deleted");
+                        callback(null, new HTMLStatus(204));
+                    });
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(value)
+                        sendResponse(res, value);
+                });
+            }
+        );
+    }else{
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied."));
+    }
+}));
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
