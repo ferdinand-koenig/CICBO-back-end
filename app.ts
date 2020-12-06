@@ -703,13 +703,10 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                             });
                         }else{
                             let i: number = shift.length;
-                            console.table(shift);
                             shift.forEach((singleShift: any) => {
-                                console.table(singleShift);
                                 let n: number = singleShift.rooms.length;
                                 singleShift.rooms.forEach((room: any) => {
                                     roomCollection.findOne({"number": room.number}).then((doc: any) => {
-                                        console.log(doc);
                                         if (!doc) {
                                             callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
                                         } else if (!doc.active) {
@@ -717,7 +714,6 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                         }
                                         if (--n === 0)
                                             if(--i === 0) callback(null);
-                                        console.log("n: "+ n + " i-1: " + i);
                                     });
                                 });
                             });
@@ -726,17 +722,20 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                     //add new entry in shifts
                     (callback: Function) => {
                         staffShiftCollection.findOne({id: staffId}).then((doc: any) => {
-                            if(!doc) callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
-                            if(add){
-                                doc.shifts.push(shift);
-                            }else{
-                                doc.shifts = shift;
+                            if(!doc) {
+                                callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
+                            }else {
+                                if (add) {
+                                    doc.shifts.push(shift);
+                                } else {
+                                    doc.shifts = shift;
+                                }
+                                staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: any, obj: any) => {
+                                    assert.strictEqual(err, null);
+                                    console.log(add ? "Shift added." : "Shifts replaced.");
+                                    callback(null, new HTMLStatus(201, add ? "Shift added." : "Shifts replaced."));
+                                });
                             }
-                            staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: any, obj: any) => {
-                                assert.strictEqual(err, null);
-                                console.log(add ? "Shift added" : "Shifts replaced");
-                                callback(null, new HTMLStatus(201, add ? "Shift added." : "Shifts replaced."));
-                            });
                         });
                     }
                 ],
