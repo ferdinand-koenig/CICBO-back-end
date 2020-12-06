@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://CICBO.com/shift.json",
+  "$id": "http://localhost:3000/schema/shift.json",
   "title": "Staff Shift Schema",
   "description": "One single shift object",
   "type": "object",
@@ -50,7 +50,6 @@
         }
       ]
     }
-
   },
   "additionalProperties": false
 }

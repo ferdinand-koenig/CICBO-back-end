@@ -55,6 +55,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
+app.get('/schema/shift.json', jsonParser, (req: Request, res: Response) => {
+    res.json(shiftSchema);
+})
+
 //STAFF
 app.post('/staff', jsonParser, (req: Request, res: Response) => {
     const staff = req.body;
@@ -127,73 +131,10 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    if(isNormalInteger(req.params.staffId)) {
-        const shift = req.body;
-        const staffId = parseInt(req.params.staffId);
-        if (!validate(shift, shiftSchema, {required: true}).valid) {
-            console.log("Not valid shift (schema)");
-            sendResponse(res, new HTMLStatus(400, "shift does not have right syntax. (Schema)"));
-        } else {
-            console.log("Valid new shift.");
-            let staffShiftCollection: any, roomCollection: any, mongoClient: any;
-            async.series(
-                [
-                    // Establish Covalent Analytics MongoDB connection
-                    (callback: Function) => {
-                        MongoClient.connect(uri, {
-                            native_parser: true,
-                            useUnifiedTopology: true
-                        }, (err: any, client: any) => {
-                            assert.strictEqual(err, null);
-
-                            mongoClient = client;
-                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                            callback(null);
-                        });
-                    },
-                    //find rooms in db
-                    (callback: Function) => {
-                        let n : number = shift.rooms.length;
-                        shift.rooms.forEach((room: any) => {
-                            roomCollection.findOne({"number": room.number}).then((err: any, doc: any) => {
-                                assert.strictEqual(err, null);
-                                if (!doc) {
-                                    callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
-                                }else if(!doc.active){
-                                    callback(new Error("Room " + room.number + " is not active"), new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with number " + room.number + "is inactive)"));
-                                }
-                                if(--n === 0) callback(null);
-                            });
-                        });
-                    },
-                    //add new entry in shifts
-                    (callback: Function) => {
-                    staffShiftCollection.findOne({id: staffId}).then((doc: any) => {
-                        if(!doc) callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
-                        doc.shifts.push(shift);
-                        staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: any, obj: any) => {
-                                assert.strictEqual(err, null);
-                                console.log("Shift added");
-                                callback(null, new HTMLStatus(201, "Shift added."));
-                            });
-                        });
-                    }
-                ],
-                (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                    mongoClient.close();
-                    console.log("Connection closed.")
-                    result.forEach(value => {
-                        if (value) {
-                            sendResponse(res, value);
-                        }
-                    });
-                }
-            );
-        }
-    }else{
-        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
-    }
+    manipulateShifts(true, req, res);
+});
+app.put('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
+    manipulateShifts(false, req, res);
 });
 
 //GUEST
@@ -223,8 +164,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                 },
                 //find room in db
                 (callback: Function) => {
-                    roomCollection.findOne({"number": guest.room.number}).then((err: any, doc: any) => {
-                        assert.strictEqual(err, null);
+                    roomCollection.findOne({"number": guest.room.number}).then((doc: any) => {
                         if(doc!=0){
                             if(!doc.active){
                                 existing = false;
@@ -703,7 +643,7 @@ function sendResponse(res: Response, status: HTMLStatus): void{
 }
 
 /**
- * checks if a string is an integer value
+ * checks if a string is a positive integer value or zero
  * @param str
  * @returns boolean
  */
@@ -712,6 +652,109 @@ function isNormalInteger(str: string): boolean{
     return n !== Infinity && String(n) === str && n >= 0;
 }
 
+function manipulateShifts(add: boolean, req: Request, res: Response){
+    if(isNormalInteger(req.params.staffId)) {
+        const shift = req.body;
+        const staffId = parseInt(req.params.staffId);
+        if (!validate(shift, add ? shiftSchema : shiftsSchema, {required: true}).valid) {
+            console.log("Not valid shift (schema)");
+            sendResponse(res, new HTMLStatus(400, "shift does not have right syntax. (Schema)"));
+        } else {
+            console.log("Valid new shift.");
+            let staffShiftCollection: any, roomCollection: any, mongoClient: any;
+            let error: any, response: HTMLStatus;
+            async.series(
+                [
+                    // Establish Covalent Analytics MongoDB connection
+                    (callback: Function) => {
+                        MongoClient.connect(uri, {
+                            native_parser: true,
+                            useUnifiedTopology: true
+                        }, (err: any, client: any) => {
+                            assert.strictEqual(err, null);
+
+                            mongoClient = client;
+                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            callback(null);
+                        });
+                    },
+                    //find rooms in db
+                    (callback: Function) => {
+                        if(add) {
+                            let n: number = shift.rooms.length;
+                            shift.rooms.forEach((room: any) => {
+                                roomCollection.findOne({"number": room.number}).then((doc: any) => {
+                                    if (!doc) {
+                                        if(!error){
+                                            error = new Error("Room " + room.number + " is not existing");
+                                            response = new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")");
+                                        }
+                                    } else if (!doc.active) {
+                                        if(!error){
+                                            error = new Error("Room " + room.number + " is not active");
+                                            response = new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with number " + room.number + " is inactive)");
+                                        }
+                                    }
+                                    if (--n === 0){
+                                        callback(error, response);
+                                    }
+                                });
+                            });
+                        }else{
+                            let i: number = shift.length;
+                            console.table(shift);
+                            shift.forEach((singleShift: any) => {
+                                console.table(singleShift);
+                                let n: number = singleShift.rooms.length;
+                                singleShift.rooms.forEach((room: any) => {
+                                    roomCollection.findOne({"number": room.number}).then((doc: any) => {
+                                        console.log(doc);
+                                        if (!doc) {
+                                            callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
+                                        } else if (!doc.active) {
+                                            callback(new Error("Room " + room.number + " is not active"), new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with number " + room.number + "is inactive)"));
+                                        }
+                                        if (--n === 0)
+                                            if(--i === 0) callback(null);
+                                        console.log("n: "+ n + " i-1: " + i);
+                                    });
+                                });
+                            });
+                        }
+                    },
+                    //add new entry in shifts
+                    (callback: Function) => {
+                        staffShiftCollection.findOne({id: staffId}).then((doc: any) => {
+                            if(!doc) callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
+                            if(add){
+                                doc.shifts.push(shift);
+                            }else{
+                                doc.shifts = shift;
+                            }
+                            staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: any, obj: any) => {
+                                assert.strictEqual(err, null);
+                                console.log(add ? "Shift added" : "Shifts replaced");
+                                callback(null, new HTMLStatus(201, add ? "Shift added." : "Shifts replaced."));
+                            });
+                        });
+                    }
+                ],
+                (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                    mongoClient.close();
+                    console.log("Connection closed.")
+                    result.forEach(value => {
+                        if (value) {
+                            sendResponse(res, value);
+                        }
+                    });
+                }
+            );
+        }
+    }else{
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }
+}
 
 module.exports = app;
 
