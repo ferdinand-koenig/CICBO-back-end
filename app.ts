@@ -52,12 +52,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/schema', express.static('schema'));
+
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-
-app.get('/schema/shift.json', jsonParser, (req: Request, res: Response) => {
-    res.json(shiftSchema);
-})
 
 //STAFF
 app.post('/staff', jsonParser, (req: Request, res: Response) => {
@@ -832,10 +830,8 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
     }
 }
 
-
-//checks in previous function calls (app.get)
 /**
- * Handles all get methods on staff entity
+ * Handles all get methods on staff entity. Checks for valid ID (for mode 1) or valid search filter must be done beforehand!
  * @param mode 0: get all, 1: get one by ID, 2: get some by search filter
  * @param req
  * @param res

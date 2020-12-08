@@ -1,3 +1,4 @@
 # Project exclude paths
 /node_modules/
-/secrets/mongo-settings-with-credentials.json
+/secrets/
+app.js
