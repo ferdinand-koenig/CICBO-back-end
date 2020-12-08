@@ -705,6 +705,12 @@ function isNormalInteger(str: string): boolean{
     return n !== Infinity && String(n) === str && n >= 0;
 }
 
+/**
+ * Handles the manipulation of shifts of a given staff member
+ * @param add boolean: true adds a shift, false replaces all shifts
+ * @param req express request: req.body contains JSON in the form of shift.json or shifts.json
+ * @param res express response
+ */
 function manipulateShifts(add: boolean, req: Request, res: Response){
     if(isNormalInteger(req.params.staffId)) {
         const shift = req.body;
