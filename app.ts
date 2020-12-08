@@ -182,58 +182,23 @@ app.delete('/staff/:staffId', jsonParser, ((req: Request, res: Response) => {
     }
 }));
 app.get('/staff', jsonParser, (req: Request, res: Response)=>{
-    let staffCollection: any, staffShiftCollection: any, roomCollection: any, mongoClient: any, staff: any;
-    async.series(
-        [
-            // Establish Covalent Analytics MongoDB connection
-            (callback: Function) => {
-                MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
-                    assert.strictEqual(err, null);
-
-                    mongoClient = client;
-                    roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                    staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                    staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                    callback(null);
-                });
-            },
-            (callback: Function) => {
-                staffCollection.find({}).toArray((err: any, docs: any) => {
-                    assert.strictEqual(err, null);
-                    staff = docs;
-                    let n: number = staff.length;
-                    staff.forEach((value: any) => {
-                        delete value._id;
-                        staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
-                            let i: number = doc.shifts.length;
-                            doc.shifts.forEach((shift: any) => {
-                                let j: number = shift.rooms.length;
-                                shift.rooms.forEach((room: any) => {
-                                    roomCollection.findOne({number: room.number}).then((document: any) => {
-                                        room.name= document.name;
-                                        room.active = document.active;
-                                        if(--j === 0)
-                                            if(--i === 0) {
-                                                value.shifts = doc.shifts;
-                                                if (--n === 0)
-                                                    callback(null);
-                                            }
-                                    });
-                                });
-                            });
-                        });
-                    });
-                    if(staff.length === 0) callback(null);
-                });
-            }
-        ],
-        () => { //oder (err: any, result: Array<any>) =>
-            mongoClient.close();
-            console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, staff));
-        }
-    );
+    getStaff(0, req, res);
 });
+app.get('/staff/find', jsonParser, (req: Request, res: Response)=>{
+    const searchFilter = req.body;
+    if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
+        console.log("Not valid searchFilter (schema)");
+        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+    }else
+        getStaff(2, req, res);
+});
+app.get('/staff/:staffId', jsonParser, (req: Request, res: Response)=>{
+    if(isNormalInteger(req.params.staffId)) {
+        getStaff(1, req, res);
+    }else
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+});
+
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
@@ -865,6 +830,86 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
     }else{
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
     }
+}
+
+
+//checks in previous function calls (app.get)
+/**
+ * Handles all get methods on staff entity
+ * @param mode 0: get all, 1: get one by ID, 2: get some by search filter
+ * @param req
+ * @param res
+ */
+function getStaff(mode: number, req: Request, res: Response){
+    let staffCollection: any, staffShiftCollection: any, roomCollection: any, mongoClient: any, staff: any;
+    let searchFilter: any, staffId: any, sortByName = false;
+    if(mode === 2){
+        searchFilter = req.body;
+        sortByName = searchFilter.sortByName;
+        delete searchFilter.sortByName;
+    }else if(mode === 1){
+        staffId = parseInt(req.params.staffId);
+    }
+    async.series(
+        [
+            // Establish Covalent Analytics MongoDB connection
+            (callback: Function) => {
+                MongoClient.connect(uri, {
+                    native_parser: true,
+                    useUnifiedTopology: true
+                }, (err: any, client: any) => {
+                    assert.strictEqual(err, null);
+
+                    mongoClient = client;
+                    roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                    staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                    staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                    callback(null);
+                });
+            },
+            (callback: Function) => {
+                staffCollection.find(mode ?
+                    ((mode === 1) ?
+                            {id: staffId}
+                            : searchFilter
+                    )
+                    : {})
+                    .sort((mode===2 && sortByName)? {name: 1} : {})
+                    .toArray((err: any, docs: any) => {
+                        assert.strictEqual(err, null);
+                        staff = docs;
+                        let n: number = staff.length;
+                        staff.forEach((value: any) => {
+                            delete value._id;
+                            staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
+                                let i: number = doc.shifts.length;
+                                doc.shifts.forEach((shift: any) => {
+                                    let j: number = shift.rooms.length;
+                                    shift.rooms.forEach((room: any) => {
+                                        roomCollection.findOne({number: room.number}).then((document: any) => {
+                                            room.name = document.name;
+                                            room.active = document.active;
+                                            if (--j === 0)
+                                                if (--i === 0) {
+                                                    value.shifts = doc.shifts;
+                                                    if (--n === 0)
+                                                        callback(null);
+                                                }
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    if (staff.length === 0) callback(null);
+                });
+            }
+        ],
+        () => { //oder (err: any, result: Array<any>) =>
+            mongoClient.close();
+            console.log("Connection closed.");
+            sendResponse(res, new HTMLStatus(200, (mode===1) ? staff[0] : staff));
+        }
+    );
 }
 
 module.exports = app;
