@@ -19,11 +19,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="add put staff&#10;fix bug in put guest">
+    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="fix red errors (eslint)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/users.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,7 +81,7 @@
       <workItem from="1607019779912" duration="75000" />
       <workItem from="1607162014232" duration="1165000" />
       <workItem from="1607163368052" duration="18124000" />
-      <workItem from="1607182642574" duration="59736000" />
+      <workItem from="1607182642574" duration="60781000" />
     </task>
     <task id="LOCAL-00001" summary="Add DELETE and GET /room&#10;plus minor changes">
       <created>1604330112123</created>
@@ -294,7 +293,14 @@
       <option name="project" value="LOCAL" />
       <updated>1607627428269</updated>
     </task>
-    <option name="localTasksCounter" value="31" />
+    <task id="LOCAL-00031" summary="fix red errors (eslint)">
+      <created>1607632609057</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1607632609057</updated>
+    </task>
+    <option name="localTasksCounter" value="32" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -330,7 +336,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Add check for existing doc in DELETE /room/:roomNr (throws 404)&#10;ideas in comments&#10;quick fixes" />
     <MESSAGE value="Add very first README.md" />
     <MESSAGE value="Swapped tasks in DELETE /room/:roomNr&#10;for better performance" />
     <MESSAGE value="Add linting for ts (and probably js)" />
@@ -355,7 +360,8 @@
     <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md" />
     <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
     <MESSAGE value="add put staff&#10;fix bug in put guest" />
-    <option name="LAST_COMMIT_MESSAGE" value="add put staff&#10;fix bug in put guest" />
+    <MESSAGE value="fix red errors (eslint)" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix red errors (eslint)" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
