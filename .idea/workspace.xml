@@ -19,9 +19,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="add get staff/:staffId and staff/find">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -81,7 +80,7 @@
       <workItem from="1607019779912" duration="75000" />
       <workItem from="1607162014232" duration="1165000" />
       <workItem from="1607163368052" duration="18124000" />
-      <workItem from="1607182642574" duration="48342000" />
+      <workItem from="1607182642574" duration="54590000" />
     </task>
     <task id="LOCAL-00001" summary="Add DELETE and GET /room&#10;plus minor changes">
       <created>1604330112123</created>
@@ -279,7 +278,14 @@
       <option name="project" value="LOCAL" />
       <updated>1607445582649</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml">
+      <created>1607455644779</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1607455644779</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -315,8 +321,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Failed try without async.series" />
-    <MESSAGE value="Add GET /guest" />
     <MESSAGE value="Update DELETE /room/id&#10;Implement disabling of rooms (202)" />
     <MESSAGE value="Add check for existing doc in DELETE /room/:roomNr (throws 404)&#10;ideas in comments&#10;quick fixes" />
     <MESSAGE value="Add very first README.md" />
@@ -340,7 +344,9 @@
     <MESSAGE value="add comment" />
     <MESSAGE value="add get staff" />
     <MESSAGE value="add get staff/:staffId and staff/find" />
-    <option name="LAST_COMMIT_MESSAGE" value="add get staff/:staffId and staff/find" />
+    <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md" />
+    <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
+    <option name="LAST_COMMIT_MESSAGE" value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

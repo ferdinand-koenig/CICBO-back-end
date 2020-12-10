@@ -126,7 +126,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
         );
     }
 });
-app.delete('/staff/:staffId', jsonParser, ((req: Request, res: Response) => {
+app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
     if(isNormalInteger(req.params.staffId)){
         let staffShiftCollection: any, staffCollection: any, mongoClient: any;
         const staffId = parseInt(req.params.staffId);
@@ -178,7 +178,7 @@ app.delete('/staff/:staffId', jsonParser, ((req: Request, res: Response) => {
     }else{
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied."));
     }
-}));
+});
 app.get('/staff', jsonParser, (req: Request, res: Response)=>{
     getStaff(0, req, res);
 });
@@ -196,7 +196,55 @@ app.get('/staff/:staffId', jsonParser, (req: Request, res: Response)=>{
     }else
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
 });
+app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
+    const staff = req.body, staffId = parseInt(req.params.staffId);
+    if(!validate(staff, staffSchema, {required: true}).valid){
+        console.log("Not valid staff member (schema)");
+        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
+    }else if(!(staff.mail || staff.phone)){
+        console.log("Not valid staff member (missing mail or phone)");
+        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
+    }else{
+        console.log("Valid new staff member.");
+        let staffCollection: any, mongoClient: any, id: any;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: Function) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: any, client: any) => {
+                        assert.strictEqual(err, null);
 
+                        mongoClient = client;
+
+                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                        callback(null);
+                    });
+                },
+                //calculate ID and insert
+                (callback: Function) => {
+                    console.table(staff);
+                    staffCollection.updateOne(
+                        {id: staffId}, {$set: staff},
+                        (err: any) => {
+                            assert.strictEqual(err, null);
+                            console.log("Staff member updated.");
+                            callback(null, new HTMLStatus(200, "Staff member updated."));
+                        }
+                    );
+                }
+            ],
+            (err: any, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                mongoClient.close();
+                console.log("Connection closed.")
+                result.forEach(value => {
+                    if(value){
+                        sendResponse(res, value);
+                    }
+                });
+            }
+        );
+    }
+});
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
@@ -415,6 +463,7 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
     }
 });
 app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
+    const guestId = parseInt(req.params.guestId);
     const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
         console.log("Not valid guest (schema)");
@@ -456,7 +505,7 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                 (callback: Function) => {
                     if(roomExisting) {
                         //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
-                        guestCollection.updateOne({id: guest.id}, {$set: guest}, (err: any, obj: any) => {
+                        guestCollection.updateOne({id: guestId}, {$set: guest}, (err: any, obj: any) => {
                                 assert.strictEqual(err, null);
                                 console.log("Guest updated.");
                                 callback(null, new HTMLStatus(200, "Guest updated."));
