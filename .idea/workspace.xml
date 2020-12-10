@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="feature/staff-member" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1jji3juO14LYaBJbO1mk5nWOOaq" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.standard" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.standard" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.standard" value="" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="restartRequiresConfirmation" value="false" />
+    <property name="settings.editor.selected.configurable" value="settings.javascript.linters.eslint" />
+    <property name="ts.external.directory.path" value="C:\Users\koenigf\WebstormProjects\CICBO-back-end\node_modules\typescript\lib" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\koenigf\WebstormProjects\CICBO-back-end" />
+    </key>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="" />
+      <created>1604323704923</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1604323704923</updated>
+      <workItem from="1604323705956" duration="21350000" />
+      <workItem from="1604476740924" duration="16039000" />
+      <workItem from="1604559975616" duration="13242000" />
+      <workItem from="1604671808129" duration="2572000" />
+      <workItem from="1605013203451" duration="387000" />
+      <workItem from="1605252375286" duration="5104000" />
+      <workItem from="1607019315288" duration="66000" />
+      <workItem from="1607019441054" duration="249000" />
+      <workItem from="1607019779912" duration="75000" />
+      <workItem from="1607162014232" duration="1165000" />
+      <workItem from="1607163368052" duration="18124000" />
+      <workItem from="1607182642574" duration="54590000" />
+    </task>
+    <task id="LOCAL-00001" summary="Add DELETE and GET /room&#10;plus minor changes">
+      <created>1604330112123</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1604330112123</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Add POST /guest and outsource schema&#10;plus minor changes">
+      <created>1604339319613</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1604339319613</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Reorder properties in guest object">
+      <created>1604340389871</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1604340389871</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Failed try without async.series">
+      <created>1604341203216</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1604341203216</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Add GET /guest">
+      <created>1604344748800</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1604344748800</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Update DELETE /room/id&#10;Implement disabling of rooms (202)">
+      <created>1604347157221</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1604347157221</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Add check for existing doc in DELETE /room/:roomNr (throws 404)&#10;ideas in comments&#10;quick fixes">
+      <created>1604505651511</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1604505651511</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Add very first README.md">
+      <created>1604506004648</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1604506004648</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Swapped tasks in DELETE /room/:roomNr&#10;for better performance">
+      <created>1604557005188</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1604557005188</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Add linting for ts (and probably js)">
+      <created>1607164940594</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1607164940594</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Add gulp">
+      <created>1607166585477</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1607166585477</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Add GET /guest/find and /guest/:guestId as well as DELETE guest">
+      <created>1607173698905</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1607173698905</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Add PUT (update) /guest/:guestId">
+      <created>1607175999247</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1607175999247</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Add raw draft of staff member">
+      <created>1607179943286</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1607179943286</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Update DB settings&#10;Outsource in unversioned file mongo-settings-with-credentials.json">
+      <created>1607184243743</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1607184243743</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Fixed POST /staff">
+      <created>1607184702579</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1607184702579</updated>
+    </task>
+    <task id="LOCAL-00017" summary="Add first implementation of API 2.0&#10;plus minor fixes">
+      <created>1607190081320</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1607190081320</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Outsource single shift">
+      <created>1607190735757</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1607190735757</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Update Staff&#10;plus minor fixes">
+      <created>1607192650810</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1607192650810</updated>
+    </task>
+    <task id="LOCAL-00020" summary="bug fixes">
+      <created>1607193461062</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1607193461062</updated>
+    </task>
+    <task id="LOCAL-00021" summary="fixed wrong merge">
+      <created>1607193998530</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1607193998530</updated>
+    </task>
+    <task id="LOCAL-00022" summary="fixed bugs">
+      <created>1607202162707</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1607202162707</updated>
+    </task>
+    <task id="LOCAL-00023" summary="fix and improve shift handling&#10;add first routing for json-schema&#10;add mongo-settings-and-credentials.json in .gitignore&#10;fix bug: then with wrong lambda function (err, doc) =&gt; (err)">
+      <created>1607274973668</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1607274973668</updated>
+    </task>
+    <task id="LOCAL-00024" summary="fix bug in shift&#10;remove debugging logs">
+      <created>1607275555628</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1607275555628</updated>
+    </task>
+    <task id="LOCAL-00025" summary="add delete staff">
+      <created>1607276911958</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1607276911958</updated>
+    </task>
+    <task id="LOCAL-00026" summary="add comment">
+      <created>1607429733052</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1607429733052</updated>
+    </task>
+    <task id="LOCAL-00027" summary="add get staff">
+      <created>1607431504413</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1607431504413</updated>
+    </task>
+    <task id="LOCAL-00028" summary="add get staff/:staffId and staff/find">
+      <created>1607445582649</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1607445582649</updated>
+    </task>
+    <task id="LOCAL-00029" summary="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml">
+      <created>1607455644779</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1607455644779</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+    <option name="exactExcludedFiles">
+      <list>
+        <option value="$PROJECT_DIR$/app.js" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="feature/staff-member" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Update DELETE /room/id&#10;Implement disabling of rooms (202)" />
+    <MESSAGE value="Add check for existing doc in DELETE /room/:roomNr (throws 404)&#10;ideas in comments&#10;quick fixes" />
+    <MESSAGE value="Add very first README.md" />
+    <MESSAGE value="Swapped tasks in DELETE /room/:roomNr&#10;for better performance" />
+    <MESSAGE value="Add linting for ts (and probably js)" />
+    <MESSAGE value="Add gulp" />
+    <MESSAGE value="Add GET /guest/find and /guest/:guestId as well as DELETE guest" />
+    <MESSAGE value="Add PUT (update) /guest/:guestId" />
+    <MESSAGE value="Add raw draft of staff member" />
+    <MESSAGE value="Update DB settings&#10;Outsource in unversioned file mongo-settings-with-credentials.json" />
+    <MESSAGE value="Fixed POST /staff" />
+    <MESSAGE value="Add first implementation of API 2.0&#10;plus minor fixes" />
+    <MESSAGE value="Outsource single shift" />
+    <MESSAGE value="Update Staff&#10;plus minor fixes" />
+    <MESSAGE value="bug fixes" />
+    <MESSAGE value="fixed wrong merge" />
+    <MESSAGE value="fixed bugs" />
+    <MESSAGE value="fix and improve shift handling&#10;add first routing for json-schema&#10;add mongo-settings-and-credentials.json in .gitignore&#10;fix bug: then with wrong lambda function (err, doc) =&gt; (err)" />
+    <MESSAGE value="fix bug in shift&#10;remove debugging logs" />
+    <MESSAGE value="add delete staff" />
+    <MESSAGE value="add comment" />
+    <MESSAGE value="add get staff" />
+    <MESSAGE value="add get staff/:staffId and staff/find" />
+    <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md" />
+    <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
+    <option name="LAST_COMMIT_MESSAGE" value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
