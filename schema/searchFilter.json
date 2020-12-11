@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://CICBO.com/searchFilter.json",
-  "title": "The root schema",
+  "title": "Search filter schema",
   "type": "object",
   "required": [
     "sortByName"

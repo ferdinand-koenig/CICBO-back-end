@@ -34,6 +34,7 @@ import searchFilterSchema from './schema/searchFilter.json';
 import shiftSchema from './schema/shift.json';
 import shiftsSchema from './schema/shifts.json';
 import staffSchema from './schema/staff.json';
+import alarmSchema from './schema/alarm.json';
 
 //classes
 class HTMLStatus{
@@ -735,6 +736,74 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
     );
 });
 
+//ALARM
+app.get('/alarm', jsonParser, (req: Request, res: Response) => {
+    const searchFilter = req.body;
+    if (!validate(searchFilter, alarmSchema, {required: true}).valid) {
+        console.log("Not valid searchFilter (schema)");
+        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+    } else {
+        const sortByName: boolean = searchFilter.sortByName, typeEquGuest: boolean = (searchFilter.type === "guest");
+        delete searchFilter.sortByName;
+        delete searchFilter.type;
+        let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, mongoClient: MongoClient, guests: any, guest: any, rooms: any, staff: any;
+        async.series(
+            [
+                // Establish Covalent Analytics MongoDB connection
+                (callback: (arg0: null) => void) => {
+                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
+                        assert.strictEqual(err, null);
+
+                        mongoClient = client;
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        callback(null);
+                    });
+                },
+                (callback: any) => { //find initial point
+                    if(typeEquGuest) {
+                        guestCollection.findOne(searchFilter).then((doc: any) => {
+                            if (!doc) callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                            delete doc._id;
+                            guest=doc;
+                            roomCollection.findOne({number: guest.room.number}).then((doc: any) => {
+                                guest.room.name = doc.name;
+                                guest.room.active = doc.active;
+                                guests.push(guest);
+                                rooms.push(doc);
+                                callback(null, new HTMLStatus(200, guest));
+                            });
+                        });
+                    }
+                },
+                (callback:any) => { //find all other stuff members
+
+                },
+                (callback:any) => { //find all other guests
+                    guestCollection.find({room: {number: guest.room.number}}).toArray((err: Error, docs: any) => {
+                        assert.strictEqual(err, null);
+                        let n = docs.length;
+                        docs.forEach((value: any) => {
+                            delete value._id;
+                            value.room = guest.room;
+                            guests.push(value);
+                            if(--n === 0 )callback(null);
+                        });
+                        if(docs.length === 0) callback(null);
+                    });
+                }
+            ],
+            () => { //oder (err: Error, result: Array<any>) =>
+                mongoClient.close();
+                console.log("Connection closed.");
+                sendResponse(res, new HTMLStatus(200, guests));
+            }
+        );
+    }
+});
+
 // catch 404 and forward to error handler
 app.use(function(req: Request, res: Response, next: NextFunction) {
   next(createError(404));
@@ -890,7 +959,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
  * @param res
  */
 function getStaff(mode: number, req: Request, res: Response){
-    let staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, staff: any;
+    let staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
     let searchFilter: any, staffId: any, sortByName = false;
     if(mode === 2){
         searchFilter = req.body;
@@ -917,48 +986,55 @@ function getStaff(mode: number, req: Request, res: Response){
                 });
             },
             (callback: (arg0: null) => void) => {
-                staffCollection.find(mode ?
-                    ((mode === 1) ?
-                            {id: staffId}
-                            : searchFilter
-                    )
-                    : {})
-                    .sort((mode===2 && sortByName)? {name: 1} : {})
-                    .toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        staff = docs;
-                        let n: number = staff.length;
-                        staff.forEach((value: any) => {
-                            delete value._id;
-                            staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
-                                let i: number = doc.shifts.length;
-                                doc.shifts.forEach((shift: any) => {
-                                    let j: number = shift.rooms.length;
-                                    shift.rooms.forEach((room: any) => {
-                                        roomCollection.findOne({number: room.number}).then((document: any) => {
-                                            room.name = document.name;
-                                            room.active = document.active;
-                                            if (--j === 0)
-                                                if (--i === 0) {
-                                                    value.shifts = doc.shifts;
-                                                    if (--n === 0)
-                                                        callback(null);
-                                                }
-                                        });
-                                    });
-                                });
-                            });
-                        });
-                    if (staff.length === 0) callback(null);
-                });
+                findStaff(staffCollection, staffShiftCollection, roomCollection, mode, staffId, searchFilter,sortByName, callback);
             }
         ],
-        () => { //oder (err: Error, result: Array<any>) =>
+        (err: Error, result: Array<any>) => { //oder () =>
             mongoClient.close();
             console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, (mode===1) ? staff[0] : staff));
+            sendResponse(res, new HTMLStatus(200, (mode===1) ? result[1][0] : result[1]));
         }
     );
+}
+
+function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: any):void{
+    let staff: any;
+    staffCollection.find(mode ?
+        ((mode === 1) ?
+                {id: staffId}
+                : searchFilter
+        )
+        : {})
+        .sort((mode===2 && sortByName)? {name: 1} : {})
+        .toArray((err: Error, docs: any) => {
+            assert.strictEqual(err, null);
+            staff = docs;
+            let n: number = staff.length;
+            staff.forEach((value: any) => {
+                delete value._id;
+                staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
+                    let i: number = doc.shifts.length;
+                    doc.shifts.forEach((shift: any) => {
+                        let j: number = shift.rooms.length;
+                        shift.rooms.forEach((room: any) => {
+                            roomCollection.findOne({number: room.number}).then((document: any) => {
+                                room.name = document.name;
+                                room.active = document.active;
+                                if (--j === 0)
+                                    if (--i === 0) {
+                                        value.shifts = doc.shifts;
+                                        if (--n === 0) {
+                                            callback(null, staff);
+                                        }
+                                    }
+                            });
+                        });
+                    });
+                });
+            });
+            if (staff.length === 0)
+                callback(null, staff);
+        });
 }
 
 module.exports = app;
