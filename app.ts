@@ -747,6 +747,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         delete searchFilter.type;
         let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
         let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number> = [];
+        let staffMembers: Array<any>, guests: Array<any>;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -788,11 +789,16 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     callback(null);
                 },
                 (callback:any) => { //find all other guests
+
                     callback(null);
+                },
+                (callback:any) => { //map stuff members
+                    findStaff(staffCollection, staffShiftCollection, roomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 }
             ],
-            () => { //oder (err: Error, result: Array<any>) =>
+            (err: Error, result: Array<any>) => { //oder () =>
                 mongoClient.close();
+                console.table(result[4]);
                 console.log("Connection closed.");
                 sendResponse(res, new HTMLStatus(200));
             }
@@ -982,7 +988,7 @@ function getStaff(mode: number, req: Request, res: Response){
                 });
             },
             (callback: (arg0: null) => void) => {
-                findStaff(staffCollection, staffShiftCollection, roomCollection, mode, staffId, searchFilter,sortByName, callback);
+                findStaff(staffCollection, staffShiftCollection, roomCollection, mode, staffId, searchFilter, sortByName, callback);
             }
         ],
         (err: Error, result: Array<any>) => { //oder () =>
@@ -1011,6 +1017,7 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
                 staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
                     let i: number = doc.shifts.length;
                     doc.shifts.forEach((shift: any) => {
+                        console.table(shift);
                         let j: number = shift.rooms.length;
                         shift.rooms.forEach((room: any) => {
                             roomCollection.findOne({number: room.number}).then((document: any) => {
