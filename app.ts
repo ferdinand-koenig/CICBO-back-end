@@ -747,7 +747,6 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         delete searchFilter.type;
         let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
         let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number> = [];
-        let staffMembers: Array<any>, guests: Array<any>;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -788,18 +787,31 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     }
                     callback(null);
                 },
-                (callback:any) => { //find all other guests
-
-                    callback(null);
-                },
                 (callback:any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
+                },
+                (callback:any) => { //find all other guests
+                    const queryArray = roomsDone.map(x => ({number: x}));
+                    guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs: any) => {
+                        assert.strictEqual(err, null);
+                        let n = 0;
+                        docs.forEach((value: any) => {
+                            delete value._id;
+                            roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                                value.room.name = doc.name;
+                                value.room.active = doc.active;
+                                if (++n == docs.length) callback(null, docs);
+                            });
+                        });
+                        if (docs.length === 0) callback(null, docs);
+                    });
                 }
             ],
             (err: Error, result: Array<any>) => { //oder () =>
                 mongoClient.close();
                 console.log("Connection closed.");
-                sendResponse(res, new HTMLStatus(200, result[4]));
+                const answer = {staffMembers: result[3], guests: result[4]};
+                sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
             }
         );
     }
