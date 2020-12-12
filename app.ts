@@ -1,9 +1,21 @@
 import createError from "http-errors";
-import express from 'express';
-import {Request, Response, NextFunction} from 'express';
+import express, {NextFunction, Request, Response} from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
+import assert from 'assert';
+
+//mongo
+import {Collection, MongoClient} from "mongodb";
+import dbSettings from './secrets/mongo-settings-with-credentials.json';
+//schema
+import roomSchema from './schema/room.json';
+import guestSchema from './schema/guest.json';
+import searchFilterSchema from './schema/searchFilter.json';
+import shiftSchema from './schema/shift.json';
+import shiftsSchema from './schema/shifts.json';
+import staffSchema from './schema/staff.json';
+import alarmSchema from './schema/alarm.json';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const indexRouter = require('./routes');
@@ -18,23 +30,10 @@ const jsonParser = express.json();
 const validate = require('jsonschema').validate;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const async = require('async');
-import assert from 'assert';
 
-//mongo
-import {Collection, MongoClient} from "mongodb";
-import dbSettings from './secrets/mongo-settings-with-credentials.json';
 //outsourcen, sodass 1. Mongo eigenen Klasse?
 // CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
-
-//schema
-import roomSchema from './schema/room.json';
-import guestSchema from './schema/guest.json';
-import searchFilterSchema from './schema/searchFilter.json';
-import shiftSchema from './schema/shift.json';
-import shiftsSchema from './schema/shifts.json';
-import staffSchema from './schema/staff.json';
-import alarmSchema from './schema/alarm.json';
 
 //classes
 class HTMLStatus{
@@ -747,7 +746,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         delete searchFilter.sortByName;
         delete searchFilter.type;
         let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
-        let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number>;
+        let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number> = [];
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -778,30 +777,15 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                         });
                     }
                 },
-                (callback: any) => { //find all other stuff members (shift-objects)
-                    let newRoomsInserted = false;
-                    let currentRoom: number;
-                    // eslint-disable-next-line no-constant-condition
-                    while (true) {
-                        currentRoom = <number>roomsToDo.pop();
-                        console.log(currentRoom);
-                        roomsDone.push(currentRoom);
-                        shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
-                            assert.strictEqual(err, null);
-                            shiftRooms.forEach((shiftRoom: any) => {
-                                if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
-                                if (!(roomsDone.includes(shiftRoom.room) || roomsToDo.includes(shiftRoom.room))){ //ist immer drinnen
-                                    roomsToDo.push(shiftRoom.room);
-                                    newRoomsInserted=true;
-                                }else{
-                                    newRoomsInserted=false;
-                                }
-                            });
-                            console.log("Not Inserted " + !newRoomsInserted);
-                            console.log("length" + roomsToDo.length);
-                            if(!newRoomsInserted && roomsToDo.length === 0) callback(null);
-                        });
+                async (callback: any) => { //find all other stuff members (shift-objects)
+                    while(roomsToDo.length !== 0) {
+                        const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
+                        console.table(result);
+                        roomsToDo = result.roomsToDo;
+                        roomsDone = result.roomsDone;
+                        staffIDs = result.staffIDs;
                     }
+                    callback(null);
                 },
                 (callback:any) => { //find all other guests
                     console.log("Jo");
@@ -1051,24 +1035,29 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
-async function findRoomsIteration(){
-    currentRoom = <number>roomsToDo.pop();
-    console.log(currentRoom);
-    roomsDone.push(currentRoom);
-    shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
-        assert.strictEqual(err, null);
-        shiftRooms.forEach((shiftRoom: any) => {
-            if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
-            if (!(roomsDone.includes(shiftRoom.room) || roomsToDo.includes(shiftRoom.room))){ //ist immer drinnen
-                roomsToDo.push(shiftRoom.room);
-                newRoomsInserted=true;
-            }else{
-                newRoomsInserted=false;
-            }
+async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection): Promise<any>{
+    return new Promise((resolve, reject) => {
+        const currentRoom = <number>roomsToDo.pop();
+        console.log(currentRoom);
+        roomsDone.push(currentRoom);
+        shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
+            assert.strictEqual(err, null);
+            console.table(shiftRooms);
+            shiftRooms.forEach(async (shiftRoom: any) => { //all shifts with current room
+                if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
+                await shiftRoomCollection.find({id: shiftRoom.id}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts
+                    assert.strictEqual(err, null);
+                    additionalShiftRooms.forEach((additionalShiftRooms: any) => {
+                        if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) { //ist immer drinnen
+                            roomsToDo.push(additionalShiftRooms.room);
+                        }
+                    });
+                });
+            });
+            console.log("length " + roomsToDo.length);
+            resolve({roomsToDo, roomsDone, staffIDs});//Gebe Object zurück mit todo, done and shiftIDs.
         });
-        console.log("Not Inserted " + !newRoomsInserted);
-        console.log("length" + roomsToDo.length);
-        if(!newRoomsInserted && roomsToDo.length === 0) callback(null); //Gebe Object zurück mit ToDo, done and shiftIDs.
+        //resolve({roomsToDo, roomsDone, staffIDs});
     });
 }
 
