@@ -793,14 +793,13 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     callback(null);
                 },
                 (callback:any) => { //map stuff members
-                    findStaff(staffCollection, staffShiftCollection, roomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
+                    findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 }
             ],
             (err: Error, result: Array<any>) => { //oder () =>
                 mongoClient.close();
-                console.table(result[4]);
                 console.log("Connection closed.");
-                sendResponse(res, new HTMLStatus(200));
+                sendResponse(res, new HTMLStatus(200, result[4]));
             }
         );
     }
@@ -961,7 +960,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
  * @param res
  */
 function getStaff(mode: number, req: Request, res: Response){
-    let staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
+    let staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
     let searchFilter: any, staffId: any, sortByName = false;
     if(mode === 2){
         searchFilter = req.body;
@@ -984,11 +983,12 @@ function getStaff(mode: number, req: Request, res: Response){
                     roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                     staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
                     staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                    shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
                     callback(null);
                 });
             },
             (callback: (arg0: null) => void) => {
-                findStaff(staffCollection, staffShiftCollection, roomCollection, mode, staffId, searchFilter, sortByName, callback);
+                findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, mode, staffId, searchFilter, sortByName, callback);
             }
         ],
         (err: Error, result: Array<any>) => { //oder () =>
@@ -999,8 +999,8 @@ function getStaff(mode: number, req: Request, res: Response){
     );
 }
 
-function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: any):void{
-    let staff: any;
+function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: any):void{
+    let staffs: any;
     staffCollection.find(mode ?
         ((mode === 1) ?
                 {id: staffId}
@@ -1010,33 +1010,30 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         .sort((mode===2 && sortByName)? {name: 1} : {})
         .toArray((err: Error, docs: any) => {
             assert.strictEqual(err, null);
-            staff = docs;
-            let n: number = staff.length;
-            staff.forEach((value: any) => {
-                delete value._id;
-                staffShiftCollection.findOne({id: value.id}).then((doc: any) => {
-                    let i: number = doc.shifts.length;
-                    doc.shifts.forEach((shift: any) => {
-                        console.table(shift);
-                        let j: number = shift.rooms.length;
-                        shift.rooms.forEach((room: any) => {
-                            roomCollection.findOne({number: room.number}).then((document: any) => {
-                                room.name = document.name;
-                                room.active = document.active;
-                                if (--j === 0)
-                                    if (--i === 0) {
-                                        value.shifts = doc.shifts;
-                                        if (--n === 0) {
-                                            callback(null, staff);
-                                        }
-                                    }
+            staffs = docs;
+            let n = staffs.length;
+            staffs.forEach((staff: any) => {
+                delete staff._id;
+                staffShiftCollection.findOne({id: staff.id}).then(async (doc: any) => {
+                    delete doc._id;
+                    staff.shifts=doc.shifts;
+                    shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
+                        assert.strictEqual(err, null);
+                        let i = shiftRooms.length;
+                        shiftRooms.forEach((shiftRoom: any) => {
+                            roomCollection.findOne({number: shiftRoom.room}).then((room: any) => {
+                                delete room._id;
+                                if(!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
+                                staff.shifts[shiftRoom.index].rooms.push(room);
+                                if(--i===0)
+                                    if(--n===0)
+                                        callback(null, staffs);
                             });
                         });
                     });
                 });
             });
-            if (staff.length === 0)
-                callback(null, staff);
+            if(n===0)callback(null, staffs);
         });
 }
 
