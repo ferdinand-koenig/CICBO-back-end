@@ -780,7 +780,6 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 async (callback: any) => { //find all other stuff members (shift-objects)
                     while(roomsToDo.length !== 0) {
                         const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
-                        console.table(result);
                         roomsToDo = result.roomsToDo;
                         roomsDone = result.roomsDone;
                         staffIDs = result.staffIDs;
@@ -788,8 +787,6 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     callback(null);
                 },
                 (callback:any) => { //find all other guests
-                    console.log("Jo");
-                    console.table(roomsDone);
                     callback(null);
                 }
             ],
@@ -1037,27 +1034,41 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
 
 async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection): Promise<any>{
     return new Promise((resolve, reject) => {
+        const newStaffIDs: Array<any>= [];
         const currentRoom = <number>roomsToDo.pop();
-        console.log(currentRoom);
         roomsDone.push(currentRoom);
-        shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
-            assert.strictEqual(err, null);
-            console.table(shiftRooms);
-            shiftRooms.forEach(async (shiftRoom: any) => { //all shifts with current room
-                if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
-                await shiftRoomCollection.find({id: shiftRoom.id}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts
+        async.series([
+            (callback: any) => { //get staff IDs
+                shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
                     assert.strictEqual(err, null);
-                    additionalShiftRooms.forEach((additionalShiftRooms: any) => {
-                        if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) { //ist immer drinnen
-                            roomsToDo.push(additionalShiftRooms.room);
+                    shiftRooms.forEach((shiftRoom: any) => { //all shifts with current room
+                        if (!staffIDs.includes(shiftRoom.id)) {
+                            staffIDs.push(shiftRoom.id);
+                            newStaffIDs.push(shiftRoom.id);
                         }
                     });
+                    callback(null);
                 });
-            });
-            console.log("length " + roomsToDo.length);
-            resolve({roomsToDo, roomsDone, staffIDs});//Gebe Object zurück mit todo, done and shiftIDs.
+            },
+            (callback: any) => {
+                let n: number = newStaffIDs.length;
+                newStaffIDs.forEach(async (newShiftRoom: any) => {
+                    await shiftRoomCollection.find({id: newShiftRoom.id}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
+                        assert.strictEqual(err, null);
+                        additionalShiftRooms.forEach((additionalShiftRooms: any) => {
+                            if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) { //ist immer drinnen
+                                roomsToDo.push(additionalShiftRooms.room);
+                            }
+                        });
+                        if(--n === 0) callback(null);
+                    });
+                });
+                if(n===0 )callback(null);
+            }
+        ],
+        ()=>{
+            resolve({roomsToDo, roomsDone, staffIDs});
         });
-        //resolve({roomsToDo, roomsDone, staffIDs});
     });
 }
 
