@@ -763,21 +763,39 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                         callback(null);
                     });
                 },
-                (callback: any) => { //find initial point
+                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //find initial point
                     if(typeEquGuest) {
                         guestCollection.findOne(searchFilter).then((guest: any) => {
                             if (!guest) {
                                 callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
                             }else {
-                                roomCollection.findOne({number: guest.room.number}).then((room: any) => {
+                                roomCollection.findOne({number: guest.room.number}).then((room: any) => { //ToDo kann entfernen
                                     roomsToDo.push(room.number);
+                                    callback(null);
+                                });
+                            }
+                        });
+                    }else{ //ToDo implement Time in both entities
+                        const arrivedAt = searchFilter.arrivedAt;
+                        const leftAt = searchFilter.leftAt;
+                        delete searchFilter.arrivedAt;
+                        delete searchFilter.leftAt;
+                        staffCollection.findOne(searchFilter).then((staff: any) => {
+                            if(!staff){
+                                callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found"));
+                            }else{
+                                shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
+                                    shiftRooms.forEach((shiftRoom: any) => {
+                                        roomsToDo.push(shiftRoom.room);
+                                    });
                                     callback(null);
                                 });
                             }
                         });
                     }
                 },
-                async (callback: any) => { //find all other stuff members (shift-objects)
+                async (callback: (arg0: null) => void) => { //find all other stuff members (shift-objects)
+                    console.table({roomsToDo: roomsToDo, roomsDone: roomsDone, staffIDs: staffIDs});
                     while(roomsToDo.length !== 0) {
                         const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
                         console.table(result);
@@ -787,10 +805,10 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     }
                     callback(null);
                 },
-                (callback:any) => { //map stuff members
+                (callback: any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
-                (callback:any) => { //find all other guests
+                (callback: (arg0: null, arg1: any) => void) => { //find all other guests
                     const queryArray = roomsDone.map(x => ({number: x}));
                     guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs: any) => {
                         assert.strictEqual(err, null);
