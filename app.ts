@@ -780,6 +780,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 async (callback: any) => { //find all other stuff members (shift-objects)
                     while(roomsToDo.length !== 0) {
                         const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
+                        console.table(result);
                         roomsToDo = result.roomsToDo;
                         roomsDone = result.roomsDone;
                         staffIDs = result.staffIDs;
@@ -1053,10 +1054,10 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
             (callback: any) => {
                 let n: number = newStaffIDs.length;
                 newStaffIDs.forEach(async (newShiftRoom: any) => {
-                    await shiftRoomCollection.find({id: newShiftRoom.id}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
+                    await shiftRoomCollection.find({id: newShiftRoom}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
                         assert.strictEqual(err, null);
                         additionalShiftRooms.forEach((additionalShiftRooms: any) => {
-                            if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) { //ist immer drinnen
+                            if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) {
                                 roomsToDo.push(additionalShiftRooms.room);
                             }
                         });
