@@ -13,7 +13,7 @@ const usersRouter = require('./routes/users');
 const app = express();
 
 //new stuff
-const jsonParser = express.json(); //vllt express.json()?
+const jsonParser = express.json();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const validate = require('jsonschema').validate;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -25,7 +25,7 @@ import {Collection, MongoClient} from "mongodb";
 import dbSettings from './secrets/mongo-settings-with-credentials.json';
 //outsourcen, sodass 1. Mongo eigenen Klasse?
 // CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
-const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri +"/" + dbSettings.dbName + dbSettings.uriOptions;
+const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
 //schema
 import roomSchema from './schema/room.json';
@@ -746,7 +746,8 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         const sortByName: boolean = searchFilter.sortByName, typeEquGuest: boolean = (searchFilter.type === "guest");
         delete searchFilter.sortByName;
         delete searchFilter.type;
-        let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, mongoClient: MongoClient, guests: any, guest: any, rooms: any, staff: any;
+        let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
+        let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number>;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -759,46 +760,59 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                         guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
                         staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
                         staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
                         callback(null);
                     });
                 },
                 (callback: any) => { //find initial point
                     if(typeEquGuest) {
-                        guestCollection.findOne(searchFilter).then((doc: any) => {
-                            if (!doc) callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
-                            delete doc._id;
-                            guest=doc;
-                            roomCollection.findOne({number: guest.room.number}).then((doc: any) => {
-                                guest.room.name = doc.name;
-                                guest.room.active = doc.active;
-                                guests.push(guest);
-                                rooms.push(doc);
-                                callback(null, new HTMLStatus(200, guest));
-                            });
+                        guestCollection.findOne(searchFilter).then((guest: any) => {
+                            if (!guest) {
+                                callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                            }else {
+                                roomCollection.findOne({number: guest.room.number}).then((room: any) => {
+                                    roomsToDo.push(room.number);
+                                    callback(null);
+                                });
+                            }
                         });
                     }
                 },
-                (callback:any) => { //find all other stuff members
-
+                (callback: any) => { //find all other stuff members (shift-objects)
+                    let newRoomsInserted = false;
+                    let currentRoom: number;
+                    // eslint-disable-next-line no-constant-condition
+                    while (true) {
+                        currentRoom = <number>roomsToDo.pop();
+                        console.log(currentRoom);
+                        roomsDone.push(currentRoom);
+                        shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
+                            assert.strictEqual(err, null);
+                            shiftRooms.forEach((shiftRoom: any) => {
+                                if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
+                                if (!(roomsDone.includes(shiftRoom.room) || roomsToDo.includes(shiftRoom.room))){ //ist immer drinnen
+                                    roomsToDo.push(shiftRoom.room);
+                                    newRoomsInserted=true;
+                                }else{
+                                    newRoomsInserted=false;
+                                }
+                            });
+                            console.log("Not Inserted " + !newRoomsInserted);
+                            console.log("length" + roomsToDo.length);
+                            if(!newRoomsInserted && roomsToDo.length === 0) callback(null);
+                        });
+                    }
                 },
                 (callback:any) => { //find all other guests
-                    guestCollection.find({room: {number: guest.room.number}}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        let n = docs.length;
-                        docs.forEach((value: any) => {
-                            delete value._id;
-                            value.room = guest.room;
-                            guests.push(value);
-                            if(--n === 0 )callback(null);
-                        });
-                        if(docs.length === 0) callback(null);
-                    });
+                    console.log("Jo");
+                    console.table(roomsDone);
+                    callback(null);
                 }
             ],
             () => { //oder (err: Error, result: Array<any>) =>
                 mongoClient.close();
                 console.log("Connection closed.");
-                sendResponse(res, new HTMLStatus(200, guests));
+                sendResponse(res, new HTMLStatus(200));
             }
         );
     }
@@ -1035,6 +1049,27 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
             if (staff.length === 0)
                 callback(null, staff);
         });
+}
+
+async function findRoomsIteration(){
+    currentRoom = <number>roomsToDo.pop();
+    console.log(currentRoom);
+    roomsDone.push(currentRoom);
+    shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
+        assert.strictEqual(err, null);
+        shiftRooms.forEach((shiftRoom: any) => {
+            if (!staffIDs.includes(shiftRoom.id)) staffIDs.push(shiftRoom.id);
+            if (!(roomsDone.includes(shiftRoom.room) || roomsToDo.includes(shiftRoom.room))){ //ist immer drinnen
+                roomsToDo.push(shiftRoom.room);
+                newRoomsInserted=true;
+            }else{
+                newRoomsInserted=false;
+            }
+        });
+        console.log("Not Inserted " + !newRoomsInserted);
+        console.log("length" + roomsToDo.length);
+        if(!newRoomsInserted && roomsToDo.length === 0) callback(null); //Gebe Object zurück mit ToDo, done and shiftIDs.
+    });
 }
 
 module.exports = app;
