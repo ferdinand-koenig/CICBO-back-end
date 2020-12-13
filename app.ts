@@ -93,7 +93,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                     staffCollection.find({}).toArray((err: Error, docs: any) => {
                         assert.strictEqual(err, null);
                         id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                        console.log("Calculated new ID " + id); //staff.id IS NOT SET
+                        console.log("Calculated new ID " + id);
                         staffCollection.insertOne(
                             Object.assign(id, staff),
                             (err: Error) => {
@@ -852,7 +852,6 @@ app.use(function(err: { message: never; status: never; }, req: Request, res: Res
 });
 
 //functions
-
 function sendResponse(res: Response, status: HTMLStatus): void{
     //res.status(200).end();
     //res.sendStatus(200);
@@ -889,7 +888,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
             sendResponse(res, new HTMLStatus(400, "shift does not have right syntax. (Schema)"));
         } else {
             console.log("Valid new shift.");
-            let staffShiftCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
+            let staffShiftCollection: Collection, shiftRoomCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
             let error: any, response: HTMLStatus;
             async.series(
                 [
@@ -903,6 +902,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
 
                             mongoClient = client;
                             staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
                             roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                             callback(null);
                         });
@@ -954,8 +954,42 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                 callback(new Error("Staff member does not exist"), new HTMLStatus(404, "Staff member not found."));
                             }else {
                                 if (add) {
+                                    //split in shift and shift-room
+                                    const rooms = shift.rooms;
+                                    delete shift.rooms;
+                                    rooms.forEach((room:any)=> {
+                                        shiftRoomCollection.insertOne(
+                                            {id: staffId, index: doc.shifts.length, room: room.number},
+                                            (err: Error) => {
+                                                assert.strictEqual(err, null);
+                                                console.log("Shift-room created");
+                                                //callback(null, new HTMLStatus(201, "Guest created."));
+                                            }
+                                        );
+                                    });
                                     doc.shifts.push(shift);
                                 } else {
+                                    shiftRoomCollection.deleteMany({id: staffId}, (err: Error) =>{
+                                        assert.strictEqual(err, null);
+                                        console.log("Deleted all shift-rooms for staff " + staffId);
+                                    });
+                                    let n=0;
+                                    shift.forEach((singleShift: any) => {
+                                        //split in shift and shift-room
+                                        const rooms = singleShift.rooms;
+                                        delete singleShift.rooms;
+                                        rooms.forEach((room:any)=> {
+                                            shiftRoomCollection.insertOne(
+                                                {id: staffId, index: n, room: room.number},
+                                                (err: Error) => {
+                                                    assert.strictEqual(err, null);
+                                                    console.log("Shift-room created");
+                                                    //callback(null, new HTMLStatus(201, "Guest created."));
+                                                }
+                                            );
+                                        });
+                                        n++;
+                                    });
                                     doc.shifts = shift;
                                 }
                                 staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: Error, obj: any) => {
