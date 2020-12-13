@@ -759,6 +759,10 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         const sortByName: boolean = searchFilter.sortByName, typeEquGuest: boolean = (searchFilter.type === "guest");
         delete searchFilter.sortByName;
         delete searchFilter.type;
+        const arrivedAt: string = searchFilter.arrivedAt;
+        const leftAt: string = searchFilter.leftAt;
+        delete searchFilter.arrivedAt;
+        delete searchFilter.leftAt;
         let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
         let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number> = [];
         async.series(
@@ -779,28 +783,34 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //find initial point
                     if(typeEquGuest) {
-                        guestCollection.findOne(searchFilter).then((guest: any) => {
-                            if (!guest) {
+                        guestCollection.find(searchFilter).toArray((err: Error, guests: any) => {
+                            assert.strictEqual(err, null);
+                            guests = guests.filter((guest: any) => overlappingPeriodOfTime(arrivedAt, leftAt, guest.arrivedAt, guest.leftAt));
+                            if (guests.length === 0) {
                                 callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
                             }else {
-                                roomsToDo.push(guest.room.number);
+                                guests.forEach((guest: any) =>
+                                    roomsToDo.push(guest.room.number));
                                 callback(null);
                             }
                         });
-                    }else{ //ToDo implement Time in both entities
-                        const arrivedAt = searchFilter.arrivedAt;
-                        const leftAt = searchFilter.leftAt;
-                        delete searchFilter.arrivedAt;
-                        delete searchFilter.leftAt;
+                    }else{
                         staffCollection.findOne(searchFilter).then((staff: any) => {
                             if(!staff){
                                 callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found"));
                             }else{
                                 shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
-                                    shiftRooms.forEach((shiftRoom: any) => {
-                                        roomsToDo.push(shiftRoom.room);
+                                    let n= shiftRooms.length;
+                                    shiftRooms.forEach((shiftRoom: any) => { //{id: 0, index: 0, room: 2} {0, 1, 3}
+                                        staffShiftCollection.findOne({id: staff.id}).then((shiftObj: any) => {
+                                            if(overlappingPeriodOfTime(arrivedAt, leftAt, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) {
+                                                roomsToDo.push(shiftRoom.room);
+                                            }else{
+                                                callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found"));
+                                            }
+                                            if(--n === 0) callback(null);
+                                        });
                                     });
-                                    callback(null);
                                 });
                             }
                         });
@@ -809,7 +819,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 async (callback: (arg0: null) => void) => { //find all other stuff members (shift-objects)
                     console.table({roomsToDo: roomsToDo, roomsDone: roomsDone, staffIDs: staffIDs});
                     while(roomsToDo.length !== 0) {
-                        const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
+                        const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection, staffShiftCollection, arrivedAt, leftAt);
                         console.table(result);
                         roomsToDo = result.roomsToDo;
                         roomsDone = result.roomsDone;
@@ -1119,7 +1129,7 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
-async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection): Promise<any>{
+async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<any>{
     return new Promise((resolve, reject) => {
         const newStaffIDs: Array<any>= [];
         const currentRoom = <number>roomsToDo.pop();
@@ -1128,16 +1138,21 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
             (callback: any) => { //get staff IDs
                 shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
                     assert.strictEqual(err, null);
+                    let n= shiftRooms.length;
                     shiftRooms.forEach((shiftRoom: any) => { //all shifts with current room
-                        if (!staffIDs.includes(shiftRoom.id)) {
-                            staffIDs.push(shiftRoom.id);
-                            newStaffIDs.push(shiftRoom.id);
-                        }
+                        staffShiftCollection.find({id: shiftRoom.id}).toArray((err: Error, shiftsObj: any) => {
+                            shiftsObj.forEach((shiftObj: any) => {
+                                if (!staffIDs.includes(shiftRoom.id) && afterOrDuringPeriodOfTime(start, end, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) { //{id, index, room}
+                                    staffIDs.push(shiftRoom.id);
+                                    newStaffIDs.push(shiftRoom.id);
+                                }
+                            });
+                            if(--n===0) callback(null);
+                        });
                     });
-                    callback(null);
                 });
             },
-            (callback: any) => {
+            (callback: any) => { //extract new rooms
                 let n: number = newStaffIDs.length;
                 newStaffIDs.forEach(async (newShiftRoom: any) => {
                     await shiftRoomCollection.find({id: newShiftRoom}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
@@ -1150,13 +1165,25 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
                         if(--n === 0) callback(null);
                     });
                 });
-                if(n===0 )callback(null);
+                if(n === 0) callback(null);
             }
         ],
         ()=>{
             resolve({roomsToDo, roomsDone, staffIDs});
         });
     });
+}
+
+function overlappingPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
+    start = new Date(start);
+    end = new Date(end);
+    startPOT = new Date(startPOT);
+    endPOT = new Date(endPOT);
+    return (((startPOT <= start) && (start <= endPOT)) || ((startPOT <= end) && (end <= endPOT)))
+}
+
+function afterOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
+    return overlappingPeriodOfTime(start, end, startPOT, endPOT) || start >= endPOT
 }
 
 module.exports = app;
