@@ -759,6 +759,10 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         const sortByName: boolean = searchFilter.sortByName, typeEquGuest: boolean = (searchFilter.type === "guest");
         delete searchFilter.sortByName;
         delete searchFilter.type;
+        const arrivedAt: string = searchFilter.arrivedAt;
+        const leftAt: string = searchFilter.leftAt;
+        delete searchFilter.arrivedAt;
+        delete searchFilter.leftAt;
         let guestCollection: Collection, roomCollection: Collection, staffCollection: Collection, staffShiftCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
         let roomsToDo: Array<number> = [], roomsDone: Array<number> = [], staffIDs: Array<number> = [];
         async.series(
@@ -779,28 +783,48 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //find initial point
                     if(typeEquGuest) {
-                        guestCollection.findOne(searchFilter).then((guest: any) => {
-                            if (!guest) {
+                        guestCollection.find(searchFilter).toArray((err: Error, guests: any) => {
+                            assert.strictEqual(err, null);
+                            guests = guests.filter((guest: any) => overlappingPeriodOfTime(arrivedAt, leftAt, guest.arrivedAt, guest.leftAt));
+                            if (guests.length === 0) {
                                 callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
                             }else {
-                                roomsToDo.push(guest.room.number);
+                                guests.forEach((guest: any) =>
+                                    roomsToDo.push(guest.room.number));
                                 callback(null);
                             }
                         });
-                    }else{ //ToDo implement Time in both entities
-                        const arrivedAt = searchFilter.arrivedAt;
-                        const leftAt = searchFilter.leftAt;
-                        delete searchFilter.arrivedAt;
-                        delete searchFilter.leftAt;
+                    }else{
                         staffCollection.findOne(searchFilter).then((staff: any) => {
+                            let error: Error, HTMLres: HTMLStatus;
                             if(!staff){
                                 callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found"));
                             }else{
-                                shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
-                                    shiftRooms.forEach((shiftRoom: any) => {
-                                        roomsToDo.push(shiftRoom.room);
-                                    });
-                                    callback(null);
+                                shiftRoomCollection.find({id: staff.id}).toArray(async (err: Error, shiftRooms: any) => {
+                                    let n= shiftRooms.length;
+                                    console.log(n);
+                                    if(n === 0){
+                                        console.log("calling back 3")
+                                        callback(null);
+                                    }else {
+                                        for (const shiftRoom of shiftRooms) { //{id: 0, index: 0, room: 2} {0, 1, 3}
+                                            await staffShiftCollection.findOne({id: staff.id}).then((shiftObj: any) => {
+                                                if (overlappingPeriodOfTime(arrivedAt, leftAt, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) {
+                                                    roomsToDo.push(shiftRoom.room);
+                                                }
+                                                if (--n === 0) {
+                                                    if(roomsToDo.length === 0){
+                                                        error = new Error('Staff member not found in DB!');
+                                                        HTMLres = new HTMLStatus(404, "Staff member not found");
+                                                    }
+                                                    console.table(roomsToDo);
+                                                    console.log("calling back 2")
+                                                    callback(error, HTMLres);
+                                                    return;
+                                                }
+                                            });
+                                        }
+                                    }
                                 });
                             }
                         });
@@ -809,7 +833,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 async (callback: (arg0: null) => void) => { //find all other stuff members (shift-objects)
                     console.table({roomsToDo: roomsToDo, roomsDone: roomsDone, staffIDs: staffIDs});
                     while(roomsToDo.length !== 0) {
-                        const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection);
+                        const result = await findRoomsIteration(roomsToDo, roomsDone, staffIDs, shiftRoomCollection, staffShiftCollection, arrivedAt, leftAt);
                         console.table(result);
                         roomsToDo = result.roomsToDo;
                         roomsDone = result.roomsDone;
@@ -841,7 +865,12 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 const answer = {staffMembers: result[3], guests: result[4]};
-                sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
+                if(result[1]){
+                    sendResponse(res, result[1]);
+                }else
+                {
+                    sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
+                }
             }
         );
     }
@@ -1119,44 +1148,65 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
-async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection): Promise<any>{
+async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<any>{
     return new Promise((resolve, reject) => {
-        const newStaffIDs: Array<any>= [];
+        const newStaffIDs: Array<number>= [];
         const currentRoom = <number>roomsToDo.pop();
         roomsDone.push(currentRoom);
         async.series([
             (callback: any) => { //get staff IDs
                 shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
                     assert.strictEqual(err, null);
+                    let n= shiftRooms.length;
                     shiftRooms.forEach((shiftRoom: any) => { //all shifts with current room
-                        if (!staffIDs.includes(shiftRoom.id)) {
-                            staffIDs.push(shiftRoom.id);
-                            newStaffIDs.push(shiftRoom.id);
-                        }
+                        staffShiftCollection.find({id: shiftRoom.id}).toArray((err: Error, shiftsObj: any) => {
+                            shiftsObj.forEach((shiftObj: any) => {
+                                if (!staffIDs.includes(shiftRoom.id) && beforeOrDuringPeriodOfTime(start, end, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) { //{id, index, room}
+                                    staffIDs.push(shiftRoom.id);
+                                    newStaffIDs.push(shiftRoom.id);
+                                }
+                            });
+                            if(--n===0) callback(null);
+                        });
                     });
-                    callback(null);
                 });
             },
-            (callback: any) => {
+            (callback: any) => { //extract new rooms
                 let n: number = newStaffIDs.length;
-                newStaffIDs.forEach(async (newShiftRoom: any) => {
-                    await shiftRoomCollection.find({id: newShiftRoom}).toArray((err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
+                newStaffIDs.forEach(async (newShiftRoom: number) => {
+                    await shiftRoomCollection.find({id: newShiftRoom}).toArray(async (err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
                         assert.strictEqual(err, null);
-                        additionalShiftRooms.forEach((additionalShiftRooms: any) => {
-                            if (!(roomsDone.includes(additionalShiftRooms.room) || roomsToDo.includes(additionalShiftRooms.room))) {
-                                roomsToDo.push(additionalShiftRooms.room);
-                            }
+                        await staffShiftCollection.findOne({id: newShiftRoom}).then((shiftObj: any) => {
+                            additionalShiftRooms.forEach((additionalShiftRoom: any) => {
+                                if (!(roomsDone.includes(additionalShiftRoom.room) || roomsToDo.includes(additionalShiftRoom.room))
+                                        && beforeOrDuringPeriodOfTime(start, end, shiftObj.shifts[additionalShiftRoom.index].arrivedAt, shiftObj.shifts[additionalShiftRoom.index].leftAt)) {
+                                    roomsToDo.push(additionalShiftRoom.room);
+                                    console.table({push: additionalShiftRoom.room, start: start, end: end, arrivedAt: shiftObj.shifts[additionalShiftRoom.index].arrivedAt, leftAt: shiftObj.shifts[additionalShiftRoom.index].leftAt});
+                                }
+                            });
                         });
                         if(--n === 0) callback(null);
                     });
                 });
-                if(n===0 )callback(null);
+                if(n === 0) callback(null);
             }
         ],
         ()=>{
             resolve({roomsToDo, roomsDone, staffIDs});
         });
     });
+}
+
+function overlappingPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
+    start = new Date(start);
+    end = new Date(end);
+    startPOT = new Date(startPOT);
+    endPOT = new Date(endPOT);
+    return (((startPOT <= start) && (start <= endPOT)) || ((startPOT <= end) && (end <= endPOT)))
+}
+
+function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
+    return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
 
 module.exports = app;
