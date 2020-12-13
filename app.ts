@@ -300,7 +300,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                 //find room in db
                 (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
                     roomCollection.findOne({"number": guest.room.number}).then((doc: any) => {
-                        if(!doc){
+                        if(doc){
                             if(!doc.active){
                                 existing = false;
                                 callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with this number is inactive)"));
@@ -783,10 +783,8 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                             if (!guest) {
                                 callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
                             }else {
-                                roomCollection.findOne({number: guest.room.number}).then((room: any) => { //ToDo kann entfernen
-                                    roomsToDo.push(room.number);
-                                    callback(null);
-                                });
+                                roomsToDo.push(guest.room.number);
+                                callback(null);
                             }
                         });
                     }else{ //ToDo implement Time in both entities
