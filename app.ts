@@ -899,11 +899,11 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
         const staffId = parseInt(req.params.staffId);
         if (!validate(shift, add ? shiftSchema : shiftsSchema, {required: true}).valid) {
             console.log("Not valid shift (schema)");
-            sendResponse(res, new HTMLStatus(400, "shift does not have right syntax. (Schema)"));
+            sendResponse(res, new HTMLStatus(400, "Shift does not have right syntax. (Schema)"));
         } else {
             console.log("Valid new shift.");
             let staffShiftCollection: Collection, shiftRoomCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
-            let error: any, response: HTMLStatus;
+            let error: any, response: HTMLStatus, warningForInactiveRoom = false;
             async.series(
                 [
                     // Establish Covalent Analytics MongoDB connection
@@ -952,7 +952,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                         if (!doc) {
                                             callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
                                         } else if (!doc.active) {
-                                            callback(new Error("Room " + room.number + " is not active"), new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with number " + room.number + "is inactive)"));
+                                            warningForInactiveRoom = true;
                                         }
                                         if (--n === 0)
                                             if(--i === 0) callback(null);
@@ -977,7 +977,6 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                             (err: Error) => {
                                                 assert.strictEqual(err, null);
                                                 console.log("Shift-room created");
-                                                //callback(null, new HTMLStatus(201, "Guest created."));
                                             }
                                         );
                                     });
@@ -998,7 +997,6 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                                 (err: Error) => {
                                                     assert.strictEqual(err, null);
                                                     console.log("Shift-room created");
-                                                    //callback(null, new HTMLStatus(201, "Guest created."));
                                                 }
                                             );
                                         });
@@ -1020,6 +1018,9 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                     console.log("Connection closed.")
                     result.forEach(value => {
                         if (value) {
+                            if(value.code === 201 && warningForInactiveRoom) {
+                                value.message!.concat(" Warning: Shift-array contained inactive rooms!");
+                            }
                             sendResponse(res, value);
                         }
                     });
