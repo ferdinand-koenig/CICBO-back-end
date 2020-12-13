@@ -801,16 +801,26 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                             }else{
                                 shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
                                     let n= shiftRooms.length;
-                                    shiftRooms.forEach((shiftRoom: any) => { //{id: 0, index: 0, room: 2} {0, 1, 3}
-                                        staffShiftCollection.findOne({id: staff.id}).then((shiftObj: any) => {
+                                    console.log(n);
+                                    shiftRooms.forEach(async (shiftRoom: any) => { //{id: 0, index: 0, room: 2} {0, 1, 3}
+                                        await staffShiftCollection.findOne({id: staff.id}).then((shiftObj: any) => {
+                                            console.log("Iter: " + shiftObj.shifts[shiftRoom.index]);
                                             if(overlappingPeriodOfTime(arrivedAt, leftAt, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) {
                                                 roomsToDo.push(shiftRoom.room);
                                             }else{
+                                                console.log("calling back 1")
                                                 callback(new Error('Staff member not found in DB!'), new HTMLStatus(404, "Staff member not found"));
                                             }
-                                            if(--n === 0) callback(null);
+                                            if(--n === 0){
+                                                console.log("calling back 2")
+                                                callback(null);
+                                            }
                                         });
                                     });
+                                    if(n === 0){
+                                        console.log("calling back 3")
+                                        callback(null);
+                                    }
                                 });
                             }
                         });
