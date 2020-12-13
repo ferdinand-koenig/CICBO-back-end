@@ -132,7 +132,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
 });
 app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
     if(isNormalInteger(req.params.staffId)){
-        let staffShiftCollection: Collection, staffCollection: Collection, mongoClient: MongoClient;
+        let staffShiftCollection: Collection, staffCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
         const staffId = parseInt(req.params.staffId);
         async.series(
             [
@@ -144,6 +144,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                         mongoClient = client;
                         staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
                         staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
                         callback(null);
                     });
                 },
@@ -155,11 +156,23 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                             callback(null);
                     });
                 },
-                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: Error | null, arg1?: HTMLStatus) => void) => {
                     staffShiftCollection.deleteOne({id: staffId}, function (err: Error, obj: any) {
-                        if(err) callback(new Error("Error in deletion of staff member " + staffId), new HTMLStatus(500));
-                        console.log("1 document deleted");
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error in shift deletion of staff member " + staffId), new HTMLStatus(500));
+                        }else {
+                            callback(null);
+                        }
+                    });
+                },
+                (callback: (arg0: Error | null, arg1?: HTMLStatus) => void) => {
+                    shiftRoomCollection.deleteMany({id: staffId}, (err: Error) =>{
+                        //err = new Error("Test");
+                        if(err){
+                            callback(new Error("FATAL: Error in shift-room deletion of staff member " + staffId), new HTMLStatus(500, "FATAL: Error in shift-room deletion of staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                        }else{
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: null, arg1: HTMLStatus) => void) => {
@@ -171,6 +184,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                 }
             ],
             (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                //console.table(err);
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
