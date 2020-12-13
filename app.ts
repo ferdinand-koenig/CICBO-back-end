@@ -3,7 +3,6 @@ import express, {NextFunction, Request, Response} from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
-import assert from 'assert';
 
 //mongo
 import {Collection, MongoClient} from "mongodb";
@@ -76,44 +75,53 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                      
-                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                      
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            callback(null);
+                        }
                     });
                 },
                 //calculate ID and insert
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     staffCollection.find({}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                        console.log("Calculated new ID " + id);
-                        staffCollection.insertOne(
-                            Object.assign(id, staff),
-                            (err: Error) => {
-                                assert.strictEqual(err, null);
-                                console.log("Staff member created.");
-                                callback(null);
-                            }
-                        )
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
+                            console.log("Calculated new ID " + id);
+                            staffCollection.insertOne(
+                                Object.assign(id, staff),
+                                (err: Error) => {
+                                    if(err){
+                                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                    }else {
+                                        console.log("Staff member created.");
+                                        callback(null);
+                                    }
+                                }
+                            )
+                        }
                     });
                 },
                 //add new entry in shifts
-                (callback: (arg0: null, arg1: HTMLStatus) => void) => {
+                (callback: (arg0: null | Error, arg1: HTMLStatus) => void) => {
                     const shift = {id: -1, shifts: []};
                     shift.id = id.id;
                     staffShiftCollection.insertOne(
                         shift,
                         (err: Error) => {
-                            assert.strictEqual(err, null);
-                            console.log("Shift object created.");
-                            callback(null, new HTMLStatus(201, "Staff member created."));
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            }else {
+                                console.log("Shift object created.");
+                                callback(null, new HTMLStatus(201, "Staff member created."));
+                            }
                         }
                     );
                 }
@@ -137,15 +145,17 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                        shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
@@ -159,15 +169,14 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                 (callback: (arg0: Error | null, arg1?: HTMLStatus) => void) => {
                     staffShiftCollection.deleteOne({id: staffId}, function (err: Error, obj: any) {
                         if(err){
-                            callback(new Error("FATAL: Error in shift deletion of staff member " + staffId), new HTMLStatus(500));
-                        }else {
+                            callback(new Error("FATAL: Error in staff-shift deletion of staff member " + staffId), new HTMLStatus(500, "FATAL: Error in shift-room deletion of staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                        }else{
                             callback(null);
                         }
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus) => void) => {
                     shiftRoomCollection.deleteMany({id: staffId}, (err: Error) =>{
-                        //err = new Error("Test");
                         if(err){
                             callback(new Error("FATAL: Error in shift-room deletion of staff member " + staffId), new HTMLStatus(500, "FATAL: Error in shift-room deletion of staff member ".concat(String(staffId)).concat(". Contact your admin.")));
                         }else{
@@ -175,11 +184,14 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                         }
                     });
                 },
-                (callback: (arg0: null, arg1: HTMLStatus) => void) => {
+                (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
                     staffCollection.deleteOne({id: staffId}, function (err: Error, obj: any) {
-                        assert.strictEqual(err, null) // if (err) throw err;
-                        console.log("1 document deleted");
-                        callback(null, new HTMLStatus(204));
+                        if(err){
+                            callback(new Error("FATAL: Error in shift deletion of staff member " + staffId), new HTMLStatus(500, "FATAL: Error in shift-room deletion of staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                        }else{
+                            console.log("1 document deleted");
+                            callback(null, new HTMLStatus(204));
+                        }
                     });
                 }
             ],
@@ -228,25 +240,30 @@ app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
+                        if(err){
+                            callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                        }else{
+                            mongoClient = client;
 
-                        mongoClient = client;
-
-                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                        callback(null);
+                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                            callback(null);
+                        }
                     });
                 },
                 //calculate ID and insert
-                (callback: (arg0: null, arg1: HTMLStatus) => void) => {
+                (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
                     console.table(staff);
                     staffCollection.updateOne(
                         {id: staffId}, {$set: staff},
                         (err: Error) => {
-                            assert.strictEqual(err, null);
-                            console.log("Staff member updated.");
-                            callback(null, new HTMLStatus(200, "Staff member updated."));
+                            if(err){
+                                callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                            }else {
+                                console.log("Staff member updated.");
+                                callback(null, new HTMLStatus(200, "Staff member updated."));
+                            }
                         }
                     );
                 }
@@ -287,14 +304,16 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error in post guest."), new HTMLStatus(500, "FATAL: Error in post guest".concat(". Contact your admin.")));
+                        }else {
+                            mongoClient = client;
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            callback(null);
+                        }
                     });
                 },
                 //find room in db
@@ -315,20 +334,26 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                     })
                 },
                 //calculate ID and insert
-                (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: null | Error, arg1?: HTMLStatus | undefined) => void) => {
                     if(existing) {
                         guestCollection.find({}).toArray((err: Error, docs: any) => {
-                            assert.strictEqual(err, null);
-                            const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
-                            console.log("Calculated new ID " + id);
-                            guestCollection.insertOne(
-                                Object.assign(id, guest),
-                                (err: Error) => {
-                                    assert.strictEqual(err, null);
-                                    console.log("Guest created.");
-                                    callback(null, new HTMLStatus(201, "Guest created."));
-                                }
-                            )
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            }else {
+                                const id = {id: docs.length == 0 ? 0 : docs.reduce((a: any, b: any) => a.id > b.id ? a : b).id + 1};
+                                console.log("Calculated new ID " + id);
+                                guestCollection.insertOne(
+                                    Object.assign(id, guest),
+                                    (err: Error) => {
+                                        if(err){
+                                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                        }else {
+                                            console.log("Guest created.");
+                                            callback(null, new HTMLStatus(201, "Guest created."));
+                                        }
+                                    }
+                                );
+                            }
                         });
                     }else{
                         callback(null);
@@ -352,30 +377,36 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
     async.series(
         [
             // Establish Covalent Analytics MongoDB connection
-            (callback: (arg0: null) => void) => {
+            (callback: (error: Error| null, htmlStatus?: HTMLStatus) => void) => {
                 MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                    assert.strictEqual(err, null);
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
 
-                    mongoClient = client;
-                    roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                    guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                    callback(null);
+                        mongoClient = client;
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                        callback(null);
+                    }
                 });
             },
-            (callback: (arg0: null) => void) => {
+            (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                 guestCollection.find({}).toArray((err: Error, docs: any) => {
-                    assert.strictEqual(err, null);
-                    guests = docs;
-                    let n=0;
-                    guests.forEach((value: any) => {
-                        delete value._id;
-                        roomCollection.findOne({number: value.room.number}).then((doc: any) => {
-                            value.room.name = doc.name;
-                            value.room.active = doc.active;
-                            if(++n == guests.length) callback(null);
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
+                        guests = docs;
+                        let n = 0;
+                        guests.forEach((value: any) => {
+                            delete value._id;
+                            roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                                value.room.name = doc.name;
+                                value.room.active = doc.active;
+                                if (++n == guests.length) callback(null);
+                            });
                         });
-                    });
-                    if(guests.length === 0) callback(null);
+                        if (guests.length === 0) callback(null);
+                    }
                 });
             }
         ],
@@ -398,30 +429,35 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            callback(null);
+                        }
                     });
                 },
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     guestCollection.find(searchFilter).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        guests = docs;
-                        let n = 0;
-                        guests.forEach((value: any) => {
-                            delete value._id;
-                            roomCollection.findOne({number: value.room.number}).then((doc: any) => {
-                                value.room.name = doc.name;
-                                value.room.active = doc.active;
-                                if (++n == guests.length) callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            guests = docs;
+                            let n = 0;
+                            guests.forEach((value: any) => {
+                                delete value._id;
+                                roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                                    value.room.name = doc.name;
+                                    value.room.active = doc.active;
+                                    if (++n == guests.length) callback(null);
+                                });
                             });
-                        });
-                        if (guests.length === 0) callback(null);
+                            if (guests.length === 0) callback(null);
+                        }
                     });
                 }
             ],
@@ -440,17 +476,19 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {
                         native_parser: true,
                         useUnifiedTopology: true
                     }, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
@@ -495,40 +533,47 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            callback(null);
+                        }
                     });
                 },
                 //find room in db
-                (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
                     roomCollection.find({"number": guest.room.number}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        if(docs.length!=0){
-                            console.log("Found room in database!");
-                            roomExisting = true;
-                            callback(null);
-                        }else{
-                            roomExisting = false;
-                            callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            if (docs.length != 0) {
+                                console.log("Found room in database!");
+                                roomExisting = true;
+                                callback(null);
+                            } else {
+                                roomExisting = false;
+                                callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                            }
                         }
                     })
                 },
                 //calculate ID and insert
-                (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
                     if(roomExisting) {
                         //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
                         guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error, obj: any) => {
-                                assert.strictEqual(err, null);
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            }else {
                                 console.log("Guest updated.");
                                 callback(null, new HTMLStatus(200, "Guest updated."));
                             }
-                        );
+                        });
                     }else{
                         callback(null);
                     }
@@ -553,13 +598,15 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
@@ -570,11 +617,14 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
                             callback(null);
                     });
                 },
-                (callback: (arg0: null, arg1: HTMLStatus) => void) => {
+                (callback: (arg0: Error | null, arg1?: HTMLStatus) => void) => {
                     guestCollection.deleteOne({id: guestId}, function (err: Error, obj: any) {
-                        assert.strictEqual(err, null) // if (err) throw err;
-                        console.log("1 document deleted");
-                        callback(null, new HTMLStatus(204));
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            console.log("1 document deleted");
+                            callback(null, new HTMLStatus(204));
+                        }
                     });
                 }
             ],
@@ -601,40 +651,48 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            callback(null);
+                        }
                     });
                 },
                 //find document in db
-                (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: null | Error, arg1?: HTMLStatus | undefined) => void) => {
                     collection.find({"number": req.body.number}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        if(docs.length!=0){
-                            console.log("Found in database!");
-                            notExisting = false;
-                            callback(null, new HTMLStatus(409, "Room with this number already exists"));
-                        }else{
-                            notExisting = true;
-                            callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            if (docs.length != 0) {
+                                console.log("Found in database!");
+                                notExisting = false;
+                                callback(null, new HTMLStatus(409, "Room with this number already exists"));
+                            } else {
+                                notExisting = true;
+                                callback(null);
+                            }
                         }
-                    })
+                    });
                 },
                 // Insert some documents
-                (callback: (arg0: null, arg1?: HTMLStatus | undefined) => void) => {
+                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
                     if (notExisting) {
                         const room = req.body;
                         room.active = true;
                         collection.insertOne(
                             room,
                             (err: Error) => {
-                                assert.strictEqual(err, null);
-                                console.log("Room created.");
-                                callback(null, new HTMLStatus(201, "Room created."));
+                                if(err){
+                                    callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                }else {
+                                    console.log("Room created.");
+                                    callback(null, new HTMLStatus(201, "Room created."));
+                                }
                             }
                         );
                     }else{
@@ -652,7 +710,6 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                 });
             }
         );
-        //class is inperformant! ~ 11 sec for post -- now 0,5 - 0,7
     }else{
         console.log("Not valid room");
         sendResponse(res, new HTMLStatus(400, "Room does not have right syntax."));
@@ -665,14 +722,16 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
@@ -689,7 +748,7 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         callback(null);
                     });
                 },
-                (callback: (arg0: null, arg1: HTMLStatus) => void) => {
+                (callback: (arg0: null | Error, arg1: HTMLStatus) => void) => {
                     if(objRes){
                         roomCollection.findOneAndUpdate({number: roomNr}, {$set: {active: false}}).then(() => {
                             console.log("set to inactive");
@@ -697,9 +756,12 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         })
                     } else {
                         roomCollection.deleteOne({number: roomNr}, function (err: Error, obj: any) {
-                            assert.strictEqual(err, null) // if (err) throw err;
-                            console.log("1 document deleted");
-                            callback(null, new HTMLStatus(204));
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            }else {
+                                console.log("1 document deleted");
+                                callback(null, new HTMLStatus(204));
+                            }
                         });
                     }
                 }
@@ -722,22 +784,27 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
     async.series(
         [
             // Establish Covalent Analytics MongoDB connection
-            (callback: (arg0: null) => void) => {
+            (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                 MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                    assert.strictEqual(err, null);
-
-                    mongoClient = client;
-                    collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                    callback(null);
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
+                        mongoClient = client;
+                        collection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        callback(null);
+                    }
                 });
             },
-            (callback: (arg0: null, arg1: any) => void) => {
+            (callback: (arg0: Error | null, arg1: any) => void) => {
                 collection.find({}).toArray((err: Error, docs: any) => {
-                    assert.strictEqual(err, null);
-                    docs.forEach((value: any) => {
-                        delete value._id;
-                    });
-                    callback(null, docs.sort((n1: any, n2: any) => n1.number - n2.number));
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
+                        docs.forEach((value: any) => {
+                            delete value._id;
+                        });
+                        callback(null, docs.sort((n1: any, n2: any) => n1.number - n2.number));
+                    }
                 });
             }
         ],
@@ -768,30 +835,35 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
-                (callback: (arg0: null) => void) => {
+                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                     MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        assert.strictEqual(err, null);
-
-                        mongoClient = client;
-                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                        guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                        shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
-                        callback(null);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            mongoClient = client;
+                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                            shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
+                            callback(null);
+                        }
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //find initial point
                     if(typeEquGuest) {
                         guestCollection.find(searchFilter).toArray((err: Error, guests: any) => {
-                            assert.strictEqual(err, null);
-                            guests = guests.filter((guest: any) => overlappingPeriodOfTime(arrivedAt, leftAt, guest.arrivedAt, guest.leftAt));
-                            if (guests.length === 0) {
-                                callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                             }else {
-                                guests.forEach((guest: any) =>
-                                    roomsToDo.push(guest.room.number));
-                                callback(null);
+                                guests = guests.filter((guest: any) => overlappingPeriodOfTime(arrivedAt, leftAt, guest.arrivedAt, guest.leftAt));
+                                if (guests.length === 0) {
+                                    callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
+                                } else {
+                                    guests.forEach((guest: any) =>
+                                        roomsToDo.push(guest.room.number));
+                                    callback(null);
+                                }
                             }
                         });
                     }else{
@@ -844,20 +916,23 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 (callback: any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
-                (callback: (arg0: null, arg1: any) => void) => { //find all other guests
+                (callback: (arg0: Error | null, arg1: any) => void) => { //find all other guests //ToDo Check for Date
                     const queryArray = roomsDone.map(x => ({number: x}));
                     guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs: any) => {
-                        assert.strictEqual(err, null);
-                        let n = 0;
-                        docs.forEach((value: any) => {
-                            delete value._id;
-                            roomCollection.findOne({number: value.room.number}).then((doc: any) => {
-                                value.room.name = doc.name;
-                                value.room.active = doc.active;
-                                if (++n == docs.length) callback(null, docs);
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            let n = 0;
+                            docs.forEach((value: any) => {
+                                delete value._id;
+                                roomCollection.findOne({number: value.room.number}).then((doc: any) => {
+                                    value.room.name = doc.name;
+                                    value.room.active = doc.active;
+                                    if (++n == docs.length) callback(null, docs);
+                                });
                             });
-                        });
-                        if (docs.length === 0) callback(null, docs);
+                            if (docs.length === 0) callback(null, docs);
+                        }
                     });
                 }
             ],
@@ -934,18 +1009,20 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
             async.series(
                 [
                     // Establish Covalent Analytics MongoDB connection
-                    (callback: (arg0: null) => void) => {
+                    (callback: (error1: Error | null, htmlStatus?: HTMLStatus) => void) => {
                         MongoClient.connect(uri, {
                             native_parser: true,
                             useUnifiedTopology: true
                         }, (err: Error, client: MongoClient) => {
-                            assert.strictEqual(err, null);
-
-                            mongoClient = client;
-                            staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                            shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
-                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                            callback(null);
+                            if(err){
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            }else {
+                                mongoClient = client;
+                                staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                                shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
+                                roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                                callback(null);
+                            }
                         });
                     },
                     //find rooms in db
@@ -1002,16 +1079,22 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                         shiftRoomCollection.insertOne(
                                             {id: staffId, index: doc.shifts.length, room: room.number},
                                             (err: Error) => {
-                                                assert.strictEqual(err, null);
-                                                console.log("Shift-room created");
+                                                if(err){
+                                                    callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                                }else {
+                                                    console.log("Shift-room created");
+                                                }
                                             }
                                         );
                                     });
                                     doc.shifts.push(shift);
                                 } else {
                                     shiftRoomCollection.deleteMany({id: staffId}, (err: Error) =>{
-                                        assert.strictEqual(err, null);
-                                        console.log("Deleted all shift-rooms for staff " + staffId);
+                                        if(err){
+                                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                        }else {
+                                            console.log("Deleted all shift-rooms for staff " + staffId);
+                                        }
                                     });
                                     let n=0;
                                     shift.forEach((singleShift: any) => {
@@ -1022,8 +1105,11 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                             shiftRoomCollection.insertOne(
                                                 {id: staffId, index: n, room: room.number},
                                                 (err: Error) => {
-                                                    assert.strictEqual(err, null);
-                                                    console.log("Shift-room created");
+                                                    if(err){
+                                                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                                    }else {
+                                                        console.log("Shift-room created");
+                                                    }
                                                 }
                                             );
                                         });
@@ -1032,9 +1118,12 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                     doc.shifts = shift;
                                 }
                                 staffShiftCollection.updateOne({id: staffId}, {$set: doc}, (err: Error, obj: any) => {
-                                    assert.strictEqual(err, null);
-                                    console.log(add ? "Shift added." : "Shifts replaced.");
-                                    callback(null, new HTMLStatus(201, add ? "Shift added." : "Shifts replaced."));
+                                    if(err){
+                                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                    }else {
+                                        console.log(add ? "Shift added." : "Shifts replaced.");
+                                        callback(null, new HTMLStatus(201, add ? "Shift added." : "Shifts replaced."));
+                                    }
                                 });
                             }
                         });
@@ -1078,19 +1167,21 @@ function getStaff(mode: number, req: Request, res: Response){
     async.series(
         [
             // Establish Covalent Analytics MongoDB connection
-            (callback: (arg0: null) => void) => {
+            (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
                 MongoClient.connect(uri, {
                     native_parser: true,
                     useUnifiedTopology: true
                 }, (err: Error, client: MongoClient) => {
-                    assert.strictEqual(err, null);
-
-                    mongoClient = client;
-                    roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                    staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                    staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
-                    shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
-                    callback(null);
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
+                        mongoClient = client;
+                        roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                        staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                        staffShiftCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaffShift);
+                        shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
+                        callback(null);
+                    }
                 });
             },
             (callback: (arg0: null) => void) => {
@@ -1115,36 +1206,42 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         : {})
         .sort((mode===2 && sortByName)? {name: 1} : {})
         .toArray((err: Error, docs: any) => {
-            assert.strictEqual(err, null);
-            staffs = docs;
-            let n = staffs.length;
-            staffs.forEach((staff: any) => {
-                delete staff._id;
-                staffShiftCollection.findOne({id: staff.id}).then(async (doc: any) => {
-                    delete doc._id;
-                    staff.shifts=doc.shifts;
-                    if(staff.shifts.length===0){
-                       if(--n===0)
-                           callback(null, staffs);
-                    }else {
-                        shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
-                            assert.strictEqual(err, null);
-                            let i = shiftRooms.length;
-                            shiftRooms.forEach((shiftRoom: any) => {
-                                roomCollection.findOne({number: shiftRoom.room}).then((room: any) => {
-                                    delete room._id;
-                                    if (!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
-                                    staff.shifts[shiftRoom.index].rooms.push(room);
-                                    if (--i === 0)
-                                        if (--n === 0)
-                                            callback(null, staffs);
-                                });
+            if(err){
+                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+            }else {
+                staffs = docs;
+                let n = staffs.length;
+                staffs.forEach((staff: any) => {
+                    delete staff._id;
+                    staffShiftCollection.findOne({id: staff.id}).then(async (doc: any) => {
+                        delete doc._id;
+                        staff.shifts = doc.shifts;
+                        if (staff.shifts.length === 0) {
+                            if (--n === 0)
+                                callback(null, staffs);
+                        } else {
+                            shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
+                                if(err){
+                                    callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                }else {
+                                    let i = shiftRooms.length;
+                                    shiftRooms.forEach((shiftRoom: any) => {
+                                        roomCollection.findOne({number: shiftRoom.room}).then((room: any) => {
+                                            delete room._id;
+                                            if (!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
+                                            staff.shifts[shiftRoom.index].rooms.push(room);
+                                            if (--i === 0)
+                                                if (--n === 0)
+                                                    callback(null, staffs);
+                                        });
+                                    });
+                                }
                             });
-                        });
-                    }
+                        }
+                    });
                 });
-            });
-            if(n===0)callback(null, staffs);
+                if (n === 0) callback(null, staffs);
+            }
         });
 }
 
@@ -1156,36 +1253,48 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
         async.series([
             (callback: any) => { //get staff IDs
                 shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms: any) => {
-                    assert.strictEqual(err, null);
-                    let n= shiftRooms.length;
-                    shiftRooms.forEach((shiftRoom: any) => { //all shifts with current room
-                        staffShiftCollection.find({id: shiftRoom.id}).toArray((err: Error, shiftsObj: any) => {
-                            shiftsObj.forEach((shiftObj: any) => {
-                                if (!staffIDs.includes(shiftRoom.id) && beforeOrDuringPeriodOfTime(start, end, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) { //{id, index, room}
-                                    staffIDs.push(shiftRoom.id);
-                                    newStaffIDs.push(shiftRoom.id);
-                                }
+                    if(err){
+                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                    }else {
+                        let n = shiftRooms.length;
+                        shiftRooms.forEach((shiftRoom: any) => { //all shifts with current room
+                            staffShiftCollection.find({id: shiftRoom.id}).toArray((err: Error, shiftsObj: any) => {
+                                shiftsObj.forEach((shiftObj: any) => {
+                                    if (!staffIDs.includes(shiftRoom.id) && beforeOrDuringPeriodOfTime(start, end, shiftObj.shifts[shiftRoom.index].arrivedAt, shiftObj.shifts[shiftRoom.index].leftAt)) { //{id, index, room}
+                                        staffIDs.push(shiftRoom.id);
+                                        newStaffIDs.push(shiftRoom.id);
+                                    }
+                                });
+                                if (--n === 0) callback(null);
                             });
-                            if(--n===0) callback(null);
                         });
-                    });
+                    }
                 });
             },
             (callback: any) => { //extract new rooms
                 let n: number = newStaffIDs.length;
                 newStaffIDs.forEach(async (newShiftRoom: number) => {
                     await shiftRoomCollection.find({id: newShiftRoom}).toArray(async (err: Error, additionalShiftRooms: any) => { //find all other shifts/rooms
-                        assert.strictEqual(err, null);
-                        await staffShiftCollection.findOne({id: newShiftRoom}).then((shiftObj: any) => {
-                            additionalShiftRooms.forEach((additionalShiftRoom: any) => {
-                                if (!(roomsDone.includes(additionalShiftRoom.room) || roomsToDo.includes(additionalShiftRoom.room))
+                        if(err){
+                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                        }else {
+                            await staffShiftCollection.findOne({id: newShiftRoom}).then((shiftObj: any) => {
+                                additionalShiftRooms.forEach((additionalShiftRoom: any) => {
+                                    if (!(roomsDone.includes(additionalShiftRoom.room) || roomsToDo.includes(additionalShiftRoom.room))
                                         && beforeOrDuringPeriodOfTime(start, end, shiftObj.shifts[additionalShiftRoom.index].arrivedAt, shiftObj.shifts[additionalShiftRoom.index].leftAt)) {
-                                    roomsToDo.push(additionalShiftRoom.room);
-                                    console.table({push: additionalShiftRoom.room, start: start, end: end, arrivedAt: shiftObj.shifts[additionalShiftRoom.index].arrivedAt, leftAt: shiftObj.shifts[additionalShiftRoom.index].leftAt});
-                                }
+                                        roomsToDo.push(additionalShiftRoom.room);
+                                        console.table({
+                                            push: additionalShiftRoom.room,
+                                            start: start,
+                                            end: end,
+                                            arrivedAt: shiftObj.shifts[additionalShiftRoom.index].arrivedAt,
+                                            leftAt: shiftObj.shifts[additionalShiftRoom.index].leftAt
+                                        });
+                                    }
+                                });
                             });
-                        });
-                        if(--n === 0) callback(null);
+                            if (--n === 0) callback(null);
+                        }
                     });
                 });
                 if(n === 0) callback(null);
