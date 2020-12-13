@@ -1081,20 +1081,25 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
                 staffShiftCollection.findOne({id: staff.id}).then(async (doc: any) => {
                     delete doc._id;
                     staff.shifts=doc.shifts;
-                    shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
-                        assert.strictEqual(err, null);
-                        let i = shiftRooms.length;
-                        shiftRooms.forEach((shiftRoom: any) => {
-                            roomCollection.findOne({number: shiftRoom.room}).then((room: any) => {
-                                delete room._id;
-                                if(!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
-                                staff.shifts[shiftRoom.index].rooms.push(room);
-                                if(--i===0)
-                                    if(--n===0)
-                                        callback(null, staffs);
+                    if(staff.shifts.length===0){
+                       if(--n===0)
+                           callback(null, staffs);
+                    }else {
+                        shiftRoomCollection.find({id: staff.id}).toArray((err: Error, shiftRooms: any) => {
+                            assert.strictEqual(err, null);
+                            let i = shiftRooms.length;
+                            shiftRooms.forEach((shiftRoom: any) => {
+                                roomCollection.findOne({number: shiftRoom.room}).then((room: any) => {
+                                    delete room._id;
+                                    if (!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
+                                    staff.shifts[shiftRoom.index].rooms.push(room);
+                                    if (--i === 0)
+                                        if (--n === 0)
+                                            callback(null, staffs);
+                                });
                             });
                         });
-                    });
+                    }
                 });
             });
             if(n===0)callback(null, staffs);
