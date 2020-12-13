@@ -19,9 +19,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml">
+    <list default="true" id="b1a5595b-b485-46fe-802d-90e72af89231" name="Default Changelist" comment="fix red errors (eslint) (router)">
+      <change beforePath="$PROJECT_DIR$/.eslintrc" beforeDir="false" afterPath="$PROJECT_DIR$/.eslintrc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/users.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,6 +47,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.standard" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -57,6 +61,9 @@
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\koenigf\WebstormProjects\CICBO-back-end" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\koenigf\WebstormProjects\CICBO-back-end" />
     </key>
@@ -80,7 +87,8 @@
       <workItem from="1607019779912" duration="75000" />
       <workItem from="1607162014232" duration="1165000" />
       <workItem from="1607163368052" duration="18124000" />
-      <workItem from="1607182642574" duration="54590000" />
+      <workItem from="1607182642574" duration="63965000" />
+      <workItem from="1607636531074" duration="666000" />
     </task>
     <task id="LOCAL-00001" summary="Add DELETE and GET /room&#10;plus minor changes">
       <created>1604330112123</created>
@@ -285,7 +293,28 @@
       <option name="project" value="LOCAL" />
       <updated>1607455644779</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="add put staff&#10;fix bug in put guest">
+      <created>1607627428269</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1607627428269</updated>
+    </task>
+    <task id="LOCAL-00031" summary="fix red errors (eslint)">
+      <created>1607632609057</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1607632609057</updated>
+    </task>
+    <task id="LOCAL-00032" summary="fix red errors (eslint) (router)">
+      <created>1607633443006</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1607633443006</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -307,7 +336,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="feature/staff-member" />
+                        <option value="feature/eslint-conform" />
                       </list>
                     </value>
                   </entry>
@@ -321,9 +350,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Update DELETE /room/id&#10;Implement disabling of rooms (202)" />
-    <MESSAGE value="Add check for existing doc in DELETE /room/:roomNr (throws 404)&#10;ideas in comments&#10;quick fixes" />
-    <MESSAGE value="Add very first README.md" />
     <MESSAGE value="Swapped tasks in DELETE /room/:roomNr&#10;for better performance" />
     <MESSAGE value="Add linting for ts (and probably js)" />
     <MESSAGE value="Add gulp" />
@@ -346,7 +372,10 @@
     <MESSAGE value="add get staff/:staffId and staff/find" />
     <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md" />
     <MESSAGE value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
-    <option name="LAST_COMMIT_MESSAGE" value="add schema routing&#10;update .gitignore&#10;update README.md&#10;add workspace.xml" />
+    <MESSAGE value="add put staff&#10;fix bug in put guest" />
+    <MESSAGE value="fix red errors (eslint)" />
+    <MESSAGE value="fix red errors (eslint) (router)" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix red errors (eslint) (router)" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

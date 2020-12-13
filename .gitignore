@@ -2,3 +2,4 @@
 /node_modules/
 /secrets/
 app.js
+/.idea/workspace.xml
