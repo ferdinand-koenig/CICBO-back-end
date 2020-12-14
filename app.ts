@@ -296,7 +296,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
     const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
         console.log("Not valid guest (schema)");
-        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? validate(guest, guestSchema, {required: true}).errors : "Guest does not have right syntax. (Schema)"));
     }else if(!(guest.mail || guest.phone)){
         console.log("Not valid guest (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
