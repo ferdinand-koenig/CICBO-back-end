@@ -86,7 +86,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
     const staff = req.body;
     if(!validate(staff, staffSchema, {required: true}).valid){
         console.log("Not valid staff member (schema)");
-        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
     }else if(!(staff.mail || staff.phone)){
         console.log("Not valid staff member (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
@@ -237,7 +237,7 @@ app.get('/staff/find', jsonParser, (req: Request, res: Response)=>{
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
-        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Invalid search-filter-object. (Schema)\n".concat(validate(searchFilter, searchFilterSchema, {required: true})): "Invalid search-filter-object. (Schema)"));
     }else
         getStaff(2, req, res);
 });
@@ -251,7 +251,7 @@ app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
     const staff = req.body, staffId = parseInt(req.params.staffId);
     if(!validate(staff, staffSchema, {required: true}).valid){
         console.log("Not valid staff member (schema)");
-        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
     }else if(!(staff.mail || staff.phone)){
         console.log("Not valid staff member (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
@@ -315,7 +315,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
     const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
         console.log("Not valid guest (schema)");
-        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? validate(guest, guestSchema, {required: true}).errors : "Guest does not have right syntax. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
     }else if(!(guest.mail || guest.phone)){
         console.log("Not valid guest (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
@@ -442,7 +442,7 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
-        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Invalid search-filter-object. (Schema)\n".concat(validate(searchFilter, searchFilterSchema, {required: true})) : "Invalid search-filter-object. (Schema)"));
     } else {
         const sortByName : boolean = searchFilter.sortByName;
         delete searchFilter.sortByName;
@@ -544,7 +544,7 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
     const guest = req.body;
     if(!validate(guest, guestSchema, {required: true}).valid){
         console.log("Not valid guest (schema)");
-        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
     }else if(!(guest.mail || guest.phone)){
         console.log("Not valid guest (missing mail or phone)");
         sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
@@ -733,7 +733,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
         );
     }else{
         console.log("Not valid room");
-        sendResponse(res, new HTMLStatus(400, "Room does not have right syntax."));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Room does not have right syntax.\n".concat(validate(req.body, roomSchema, {required: true})) : "Room does not have right syntax."));
     }
 });
 app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
@@ -842,7 +842,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
     const searchFilter = req.body;
     if (!validate(searchFilter, alarmSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
-        sendResponse(res, new HTMLStatus(400, "Invalid search-filter-object. (Schema)"));
+        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Invalid search-filter-object. (Schema)\n".concat(validate(searchFilter, alarmSchema, {required: true})) : "Invalid search-filter-object. (Schema)"));
     } else {
         const sortByName: boolean = searchFilter.sortByName, typeEquGuest: boolean = (searchFilter.type === "guest");
         delete searchFilter.sortByName;
@@ -1029,7 +1029,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
         const staffId = parseInt(req.params.staffId);
         if (!validate(shift, add ? shiftSchema : shiftsSchema, {required: true}).valid) {
             console.log("Not valid shift (schema)");
-            sendResponse(res, new HTMLStatus(400, "Shift does not have right syntax. (Schema)"));
+            sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Shift does not have right syntax. (Schema)\n".concat(validate(shift, add ? shiftSchema : shiftsSchema, {required: true})) : "Shift does not have right syntax. (Schema)"));
         } else {
             console.log("Valid new shift.");
             let staffShiftCollection: Collection, shiftRoomCollection: Collection, roomCollection: Collection, mongoClient: MongoClient;
