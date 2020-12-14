@@ -47,7 +47,20 @@ class HTMLStatus{
     }
 }
 
-interface guestInternalPrototype{ _id: never; room: { number: number; name: string; active: boolean; }; }
+//interfaces
+interface InternalRoomSchema{ number: number, name?: string, active?: boolean }
+
+interface InternalGuestSchema {
+    _id?: string
+    firstName: string;
+    name: string;
+    mail?: string;
+    phone?: string;
+    address?: string;
+    arrivedAt: string;
+    leftAt: string;
+    room: InternalRoomSchema;
+}
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -55,11 +68,14 @@ app.set('view engine', 'pug');
 
 const allowedOrigins = ['http://CICBO.com',
     'http://localhost:3000',
-    'http://localhost:4200'
+    'http://localhost:4200',
+    'https://CICBO.com',
+    'https://localhost:3000',
+    'https://localhost:4200'
  ];
 app.use(cors({
-    origin: function(origin: string, callback: (arg0: Error | null, arg1: boolean) => any){
-        // allow requests with no origin 
+    origin: function(origin: string, callback: (arg0: Error | null, arg1: boolean) => void){
+        // allow requests with no origin
         // (like mobile apps or curl requests)
         if(!origin) return callback(null, true);
         if(allowedOrigins.indexOf(origin) === -1){
@@ -394,7 +410,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
     }
 });
 app.get('/guest', jsonParser, (req: Request, res: Response) => {
-    let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guests: any;
+    let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guests: Array<InternalGuestSchema>;
     async.series(
         [
             // Establish Covalent Analytics MongoDB connection
@@ -418,7 +434,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
                     }else {
                         guests = docs;
                         let n = 0;
-                        guests.forEach((value: guestInternalPrototype) => {
+                        guests.forEach((value) => {
                             delete value._id;
                             roomCollection.findOne({number: value.room.number}).then((doc) => {
                                 value.room.name = doc.name;
@@ -434,7 +450,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         () => { //oder (err: Error, result: Array<any>) =>
             mongoClient.close();
             console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, guests));
+            sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
         }
     );
 });
@@ -446,7 +462,7 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
     } else {
         const sortByName : boolean = searchFilter.sortByName;
         delete searchFilter.sortByName;
-        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guests: any;
+        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guests: Array<InternalGuestSchema>;
         async.series(
             [
                 // Establish Covalent Analytics MongoDB connection
@@ -469,7 +485,7 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
                         }else {
                             guests = docs;
                             let n = 0;
-                            guests.forEach((value: guestInternalPrototype) => {
+                            guests.forEach((value) => {
                                 delete value._id;
                                 roomCollection.findOne({number: value.room.number}).then((doc) => {
                                     value.room.name = doc.name;
@@ -485,14 +501,14 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
             () => { //oder (err: Error, result: Array<any>) =>
                 mongoClient.close();
                 console.log("Connection closed.");
-                sendResponse(res, new HTMLStatus(200, guests));
+                sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
             }
         );
     }
 });
 app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
     if(isNormalInteger(req.params.guestId)) {
-        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guest: any;
+        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guest: InternalGuestSchema;
         const guestId = parseInt(req.params.guestId);
         async.series(
             [
@@ -520,7 +536,7 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                         roomCollection.findOne({number: guest.room.number}).then((doc) => {
                             guest.room.name = doc.name;
                             guest.room.active = doc.active;
-                            callback(null, new HTMLStatus(200, guest));
+                            callback(null, new HTMLStatus(200, JSON.stringify(guest)));
                         });
                     });
                 }
@@ -631,7 +647,7 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
                     });
                 },
                 (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
-                    guestCollection.findOne({id: guestId}).then((doc: any) => {
+                    guestCollection.findOne({id: guestId}).then((doc) => {
                         if(!doc){
                             callback(new Error('Guest not found in DB!'), new HTMLStatus(404, "Guest not found!"));
                         } else
@@ -821,7 +837,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                     if(err){
                         callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                     }else {
-                        docs.forEach((value: any) => {
+                        docs.forEach((value) => {
                             delete value._id;
                         });
                         callback(null, docs.sort((n1, n2) => n1.number - n2.number));
@@ -937,14 +953,14 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 (callback: any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
-                (callback: (arg0: Error | null, arg1: any) => void) => { //find all other guests
+                (callback: (arg0: Error | null, arg1: any[] | HTMLStatus) => void) => { //find all other guests
                     const queryArray = roomsDone.map(x => ({number: x}));
                     guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs) => {
                         if(err){
                             callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                         }else {
                             let n = 0;
-                            docs.forEach((value: any) => {
+                            docs.forEach((value) => {
                                 delete value._id;
                                 roomCollection.findOne({number: value.room.number}).then((doc) => {
                                     value.room.name = doc.name;
@@ -1057,7 +1073,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                     (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
                         if(add) {
                             let n: number = shift.rooms.length;
-                            shift.rooms.forEach((room: any) => {
+                            shift.rooms.forEach((room: InternalRoomSchema) => {
                                 roomCollection.findOne({"number": room.number}).then((doc) => {
                                     if (!doc) {
                                         if(!error){
@@ -1079,7 +1095,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                             let i: number = shift.length;
                             shift.forEach((singleShift: any) => {
                                 let n: number = singleShift.rooms.length;
-                                singleShift.rooms.forEach((room: any) => {
+                                singleShift.rooms.forEach((room: InternalRoomSchema) => {
                                     roomCollection.findOne({"number": room.number}).then((doc) => {
                                         if (!doc) {
                                             callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
@@ -1103,7 +1119,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                     //split in shift and shift-room
                                     const rooms = shift.rooms;
                                     delete shift.rooms;
-                                    rooms.forEach((room:any)=> {
+                                    rooms.forEach((room: InternalRoomSchema)=> {
                                         shiftRoomCollection.insertOne(
                                             {id: staffId, index: doc.shifts.length, room: room.number},
                                             (err: Error) => {
@@ -1129,7 +1145,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                         //split in shift and shift-room
                                         const rooms = singleShift.rooms;
                                         delete singleShift.rooms;
-                                        rooms.forEach((room:any)=> {
+                                        rooms.forEach((room: InternalRoomSchema)=> {
                                             shiftRoomCollection.insertOne(
                                                 {id: staffId, index: n, room: room.number},
                                                 (err: Error) => {
@@ -1163,7 +1179,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                     result.forEach(value => {
                         if (value) {
                             if(value.code === 201 && warningForInactiveRoom) {
-                                value.message!.concat(" Warning: Shift-array contained inactive rooms!");
+                                value.message?.concat(" Warning: Shift-array contained inactive rooms!");
                             }
                             sendResponse(res, value);
                         }
@@ -1279,7 +1295,7 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
         const currentRoom = <number>roomsToDo.pop();
         roomsDone.push(currentRoom);
         async.series([
-            (callback: any) => { //get staff IDs
+            (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //get staff IDs
                 shiftRoomCollection.find({room: currentRoom}).toArray((err: Error, shiftRooms) => {
                     if(err){
                         callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
@@ -1299,7 +1315,7 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
                     }
                 });
             },
-            (callback: any) => { //extract new rooms
+            (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => { //extract new rooms
                 let n: number = newStaffIDs.length;
                 newStaffIDs.forEach(async (newShiftRoom: number) => {
                     await shiftRoomCollection.find({id: newShiftRoom}).toArray(async (err: Error, additionalShiftRooms) => { //find all other shifts/rooms
