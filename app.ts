@@ -21,6 +21,8 @@ const indexRouter = require('./routes');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const usersRouter = require('./routes/users');
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cors = require('cors');
 const app = express();
 
 //new stuff
@@ -51,6 +53,23 @@ interface guestInternalPrototype{ _id: never; room: { number: number; name: stri
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
+const allowedOrigins = ['http://CICBO.com',
+    'http://localhost:3000',
+    'http://localhost:4200'
+ ];
+app.use(cors({
+    origin: function(origin: string, callback: (arg0: Error | null, arg1: boolean) => any){
+        // allow requests with no origin 
+        // (like mobile apps or curl requests)
+        if(!origin) return callback(null, true);
+        if(allowedOrigins.indexOf(origin) === -1){
+            const msg = 'The CORS policy for this site does not ' +
+                'allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    }
+}));
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
