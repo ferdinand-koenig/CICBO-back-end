@@ -753,8 +753,9 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
     }
 });
 app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
+    //ToDo check also in shift-room if room is in use
     if(isNormalInteger(req.params.roomNr)){
-        let roomCollection: Collection, guestCollection: Collection, mongoClient: MongoClient, objRes: any;
+        let roomCollection: Collection, guestCollection: Collection, mongoClient: MongoClient, objRes: InternalGuestSchema;
         const roomNr=parseInt(req.params.roomNr);
         async.series(
             [
