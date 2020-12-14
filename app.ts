@@ -916,7 +916,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 (callback: any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
-                (callback: (arg0: Error | null, arg1: any) => void) => { //find all other guests //ToDo Check for Date
+                (callback: (arg0: Error | null, arg1: any) => void) => { //find all other guests
                     const queryArray = roomsDone.map(x => ({number: x}));
                     guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs: any) => {
                         if(err){
@@ -936,12 +936,19 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<any>) => { //oder () =>
+            (err: Error, result: Array<Array<any> | undefined | HTMLStatus>) => { //oder () =>
                 mongoClient.close();
                 console.log("Connection closed.");
-                const answer = {staffMembers: result[3], guests: result[4]};
+                
+                let guests = result[4];
+
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                guests = guests?.filter((item: { arrivedAt: string | number | Date; leftAt: string | number | Date; }) => beforeOrDuringPeriodOfTime(arrivedAt, leftAt, item.arrivedAt, item.leftAt));
+                
+                const answer = {staffMembers: result[3], guests: guests};
                 if(result[1]){
-                    sendResponse(res, result[1]);
+                    sendResponse(res, <HTMLStatus>result[1]);
                 }else
                 {
                     sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
@@ -1314,6 +1321,15 @@ function overlappingPeriodOfTime(start: string | number | Date, end: string | nu
     return (((startPOT <= start) && (start <= endPOT)) || ((startPOT <= end) && (end <= endPOT)))
 }
 
+/**
+ * Checks if first period of time is in or before the second POT
+ *
+ * @param start
+ * @param end
+ * @param startPOT
+ * @param endPOT
+ * @returns true Iff (start - end) is before or During (startPOT, endPOT)
+ */
 function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
