@@ -379,10 +379,11 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                             if(!doc.active){
                                 existing = false;
                                 callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with this number is inactive)"));
+                            }else {
+                                console.log("Found room in database!");
+                                existing = true;
+                                callback(null);
                             }
-                            console.log("Found room in database!");
-                            existing = true;
-                            callback(null);
                         }else{
                             existing = false;
                             callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
