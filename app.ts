@@ -88,9 +88,13 @@ app.set('view engine', 'pug');
 const allowedOrigins = ['http://CICBO.com',
     'http://localhost:3000',
     'http://localhost:4200',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4200',
     'https://CICBO.com',
     'https://localhost:3000',
-    'https://localhost:4200'
+    'https://localhost:4200',
+    'https://127.0.0.1:3000',
+    'https://127.0.0.1:4200'
  ];
 app.use(cors({
     origin: function(origin: string, callback: (arg0: Error | null, arg1: boolean) => void){
@@ -379,7 +383,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                             if(!doc.active){
                                 existing = false;
                                 callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (Room with this number is inactive)"));
-                            }else {
+                            }else{
                                 console.log("Found room in database!");
                                 existing = true;
                                 callback(null);
