@@ -970,7 +970,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     }
                     callback(null);
                 },
-                (callback: any) => { //map stuff members
+                (callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
                 (callback: (arg0: Error | null, arg1: Array<InternalGuestSchema> | HTMLStatus) => void) => { //find all other guests
@@ -993,7 +993,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<Array<any> | undefined | HTMLStatus>) => { //oder () =>
+            (err: Error, result: Array<Array<InternalGuestSchema | InternalStaffSchema> | undefined | HTMLStatus>) => { //oder () =>
                 mongoClient.close();
                 console.log("Connection closed.");
                 
@@ -1320,7 +1320,7 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
-async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<any>{
+async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<{roomsToDo: number[], roomsDone: number[], staffIDs: number[]}>{
     return new Promise((resolve) => {
         const newStaffIDs: Array<number>= [];
         const currentRoom = <number>roomsToDo.pop();
