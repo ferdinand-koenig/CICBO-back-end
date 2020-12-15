@@ -54,6 +54,7 @@ interface InternalRoomSchema{
 }
 interface InternalGuestSchema {
     _id?: string
+    id?: number
     firstName: string;
     name: string;
     mail?: string;
@@ -63,6 +64,22 @@ interface InternalGuestSchema {
     leftAt: string;
     room: InternalRoomSchema;
 }
+interface InternalShiftSchema{
+    arrivedAt: string,
+    leftAt: string,
+    rooms?: Array<InternalRoomSchema>
+}
+interface InternalStaffSchema{
+    _id?: string,
+    id?: number,
+    firstName: string,
+    name: string,
+    mail?: string,
+    phone?: string,
+    address?: string
+    shifts: Array<InternalShiftSchema>
+}
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -956,7 +973,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                 (callback: any) => { //map stuff members
                     findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, 2, 0, {id: {$in: staffIDs}}, false, callback);
                 },
-                (callback: (arg0: Error | null, arg1: any[] | HTMLStatus) => void) => { //find all other guests
+                (callback: (arg0: Error | null, arg1: Array<InternalGuestSchema> | HTMLStatus) => void) => { //find all other guests
                     const queryArray = roomsDone.map(x => ({number: x}));
                     guestCollection.find({room: {$in: queryArray}}).sort(sortByName ? {name: 1} : {}).toArray((err: Error, docs) => {
                         if(err){
@@ -1096,19 +1113,24 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                             });
                         }else{
                             let i: number = shift.length;
-                            shift.forEach((singleShift: any) => {
-                                let n: number = singleShift.rooms.length;
-                                singleShift.rooms.forEach((room: InternalRoomSchema) => {
-                                    roomCollection.findOne({"number": room.number}).then((doc) => {
-                                        if (!doc) {
-                                            callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
-                                        } else if (!doc.active) {
-                                            warningForInactiveRoom = true;
-                                        }
-                                        if (--n === 0)
-                                            if(--i === 0) callback(null);
+                            shift.forEach((singleShift: InternalShiftSchema) => {
+                                if (!singleShift.rooms) {
+                                    console.error("singleShift.rooms was null! (manipulateShifts)");
+                                    callback(new Error("singleShift.rooms was null!"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                } else {
+                                    let n: number = singleShift.rooms.length;
+                                    singleShift.rooms.forEach((room) => {
+                                        roomCollection.findOne({"number": room.number}).then((doc) => {
+                                            if (!doc) {
+                                                callback(new Error("Room " + room.number + " is not existing"), new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with number " + room.number + ")"));
+                                            } else if (!doc.active) {
+                                                warningForInactiveRoom = true;
+                                            }
+                                            if (--n === 0)
+                                                if (--i === 0) callback(null);
+                                        });
                                     });
-                                });
+                                }
                             });
                         }
                     },
@@ -1144,23 +1166,26 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                                         }
                                     });
                                     let n=0;
-                                    shift.forEach((singleShift: any) => {
+                                    shift.forEach((singleShift: InternalShiftSchema) => {
                                         //split in shift and shift-room
                                         const rooms = singleShift.rooms;
                                         delete singleShift.rooms;
-                                        rooms.forEach((room: InternalRoomSchema)=> {
-                                            shiftRoomCollection.insertOne(
-                                                {id: staffId, index: n, room: room.number},
-                                                (err: Error) => {
-                                                    if(err){
-                                                        callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                                                    }else {
-                                                        console.log("Shift-room created");
+                                        if(!rooms){
+                                            console.error("singleShift.rooms was null! (manipulateShifts)");
+                                            callback(new Error("singleShift.rooms was null!"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                        }else{
+                                            rooms.forEach((room) => {
+                                                shiftRoomCollection.insertOne({id: staffId, index: n, room: room.number}, (err: Error) => {
+                                                        if (err) {
+                                                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                                        } else {
+                                                            console.log("Shift-room created");
+                                                        }
                                                     }
-                                                }
-                                            );
-                                        });
-                                        n++;
+                                                );
+                                            });
+                                            n++;
+                                        }
                                     });
                                     doc.shifts = shift;
                                 }
@@ -1231,11 +1256,11 @@ function getStaff(mode: number, req: Request, res: Response){
                     }
                 });
             },
-            (callback: (arg0: null) => void) => {
+            (callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }) => {
                 findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, mode, staffId, searchFilter, sortByName, callback);
             }
         ],
-        (err: Error, result: Array<any>) => { //oder () =>
+        (err: Error, result: Array<never>) => { //oder () =>
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, (mode===1) ? result[1][0] : result[1]));
@@ -1243,8 +1268,8 @@ function getStaff(mode: number, req: Request, res: Response){
     );
 }
 
-function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: any):void{
-    let staffs: any;
+function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }):void{
+    let staffs: Array<InternalStaffSchema>;
     staffCollection.find(mode ?
         ((mode === 1) ?
                 {id: staffId}
@@ -1258,7 +1283,7 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
             }else {
                 staffs = docs;
                 let n = staffs.length;
-                staffs.forEach((staff: any) => {
+                staffs.forEach((staff) => {
                     delete staff._id;
                     staffShiftCollection.findOne({id: staff.id}).then(async (doc) => {
                         delete doc._id;
@@ -1272,14 +1297,17 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
                                     callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                                 }else {
                                     let i = shiftRooms.length;
-                                    shiftRooms.forEach((shiftRoom: any) => {
+                                    shiftRooms.forEach((shiftRoom) => {
                                         roomCollection.findOne({number: shiftRoom.room}).then((room) => {
                                             delete room._id;
-                                            if (!staff.shifts[shiftRoom.index].rooms) staff.shifts[shiftRoom.index].rooms = [];
-                                            staff.shifts[shiftRoom.index].rooms.push(room);
-                                            if (--i === 0)
-                                                if (--n === 0)
-                                                    callback(null, staffs);
+                                            if (!staff.shifts[shiftRoom.index].rooms) {
+                                                staff.shifts[shiftRoom.index].rooms = [];
+                                            }
+                                            //eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                                            staff.shifts[shiftRoom.index].rooms!.push(room);
+                                                if (--i === 0)
+                                                    if (--n === 0)
+                                                        callback(null, staffs);
                                         });
                                     });
                                 }
