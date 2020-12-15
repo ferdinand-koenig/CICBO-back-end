@@ -25,7 +25,6 @@ const usersRouter = require('./routes/users');
 const cors = require('cors');
 const app = express();
 
-//new stuff
 const jsonParser = express.json();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const validate = require('jsonschema').validate;
@@ -48,8 +47,11 @@ class HTMLStatus{
 }
 
 //interfaces
-interface InternalRoomSchema{ number: number, name?: string, active?: boolean }
-
+interface InternalRoomSchema{
+    number: number,
+    name?: string,
+    active?: boolean
+}
 interface InternalGuestSchema {
     _id?: string
     firstName: string;
@@ -833,7 +835,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                     }
                 });
             },
-            (callback: (arg0: Error | null, arg1: any) => void) => {
+            (callback: (arg0: Error | null, arg1: HTMLStatus | Array<InternalRoomSchema>) => void) => {
                 collection.find({}).toArray((err: Error, docs) => {
                     if(err){
                         callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
@@ -1313,6 +1315,7 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
                                 if (--n === 0) callback(null);
                             });
                         });
+                        if(n === 0) callback(null);
                     }
                 });
             },
