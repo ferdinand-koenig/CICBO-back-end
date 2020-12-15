@@ -1044,7 +1044,23 @@ function sendResponse(res: Response, status: HTMLStatus): void{
     if(!status.message){
         res.sendStatus(status.code);
     }else{
-        res.status(status.code).send(status.message);
+        const message = JSON.stringify(status.message);
+        //ToDo Implement only for text responses
+        //if(!isJSON(message)) message = JSON.stringify({message: message});
+        res.status(status.code).send(JSON.stringify(status.message));
+    }
+}
+
+function isJSON(input: string){
+    try{
+        console.table(input)
+        console.log(input)
+        JSON.parse(input);
+        return true;
+    }
+    catch (error){
+        console.log(error);
+        return false;
     }
 }
 
