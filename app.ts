@@ -79,6 +79,18 @@ interface InternalStaffSchema{
     address?: string
     shifts: Array<InternalShiftSchema>
 }
+interface InternalSearchFilter{
+    id?: Record<string, unknown>;
+    sortByName?: boolean;
+    firstName?: string;
+    name?: string;
+    arrivedAt?: string;
+    leftAt?: string;
+    mail?: string;
+    phone?: string;
+    address?: string;
+    number?: number;
+}
 
 
 // view engine setup
@@ -1038,29 +1050,11 @@ app.use(function(err: { message: never; status: never; }, req: Request, res: Res
 
 //functions
 function sendResponse(res: Response, status: HTMLStatus): void{
-    //res.status(200).end();
-    //res.sendStatus(200);
-    //res.status(201).send('Room created.');
     if(!status.message){
         res.sendStatus(status.code);
     }else{
-        const message = JSON.stringify(status.message);
-        //ToDo Implement only for text responses
-        //if(!isJSON(message)) message = JSON.stringify({message: message});
-        res.status(status.code).send(JSON.stringify(status.message));
-    }
-}
-
-function isJSON(input: string){
-    try{
-        console.table(input)
-        console.log(input)
-        JSON.parse(input);
-        return true;
-    }
-    catch (error){
-        console.log(error);
-        return false;
+        const message = (typeof status.message === 'string' && (status.message.charAt(1) === "[" || status.message.charAt(1) === "{")) ? status.message : JSON.stringify(status.message)
+        res.status(status.code).send(message);
     }
 }
 
@@ -1249,10 +1243,16 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
  */
 function getStaff(mode: number, req: Request, res: Response){
     let staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient;
-    let searchFilter: any, staffId: number, sortByName = false;
+    let searchFilter: InternalSearchFilter, staffId: number, sortByName = false;
     if(mode === 2){
         searchFilter = req.body;
-        sortByName = searchFilter.sortByName;
+        if (searchFilter.sortByName) {
+            sortByName = searchFilter.sortByName;
+        }else{
+            console.error("searchFilter.sortByName was unexpectedly null! (getStaff)");
+            sendResponse(res,new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+            return;
+        }
         delete searchFilter.sortByName;
     }else if(mode === 1){
         staffId = parseInt(req.params.staffId);
@@ -1289,7 +1289,7 @@ function getStaff(mode: number, req: Request, res: Response){
     );
 }
 
-function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: any, sortByName: boolean, callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }):void{
+function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: InternalSearchFilter, sortByName: boolean, callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }):void{
     let staffs: Array<InternalStaffSchema>;
     staffCollection.find(mode ?
         ((mode === 1) ?
