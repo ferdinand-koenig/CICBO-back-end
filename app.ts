@@ -789,9 +789,8 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
     }
 });
 app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
-    //ToDo check also in shift-room if room is in use
     if(isNormalInteger(req.params.roomNr)){
-        let roomCollection: Collection, guestCollection: Collection, mongoClient: MongoClient, objRes: InternalGuestSchema;
+        let roomCollection: Collection, guestCollection: Collection, shiftRoomCollection: Collection, mongoClient: MongoClient, objRes: InternalGuestSchema;
         const roomNr=parseInt(req.params.roomNr);
         async.series(
             [
@@ -804,6 +803,7 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                             mongoClient = client;
                             roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
                             guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                            shiftRoomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameShiftRoom);
                             callback(null);
                         }
                     });
@@ -822,10 +822,16 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                         callback(null);
                     });
                 },
+                (callback: (arg0: null) => void) => {
+                    shiftRoomCollection.findOne({room: roomNr}).then((shiftRoom) => {
+                        if(!objRes) objRes=shiftRoom;
+                        callback(null);
+                    });
+                },
                 (callback: (arg0: null | Error, arg1: HTMLStatus) => void) => {
                     if(objRes){
                         roomCollection.findOneAndUpdate({number: roomNr}, {$set: {active: false}}).then(() => {
-                            console.log("set to inactive");
+                            console.log("Set to inactive");
                             callback(null, new HTMLStatus(202, "Set active-flag to false."));
                         })
                     } else {
