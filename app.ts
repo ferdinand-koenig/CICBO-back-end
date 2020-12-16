@@ -33,17 +33,6 @@ const async = require('async');
 
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
-//classes
-class HTMLStatus{
-    code: number;
-    message?: string;
-
-    constructor(code: number, message?: string) {
-        this.code = code;
-        if(message) this.message = message;
-    }
-}
-
 //interfaces
 interface InternalRoomSchema{
     number: number,
@@ -90,6 +79,16 @@ interface InternalSearchFilter{
     number?: number;
 }
 
+//classes
+class HTMLStatus{
+    code: number;
+    message?: string | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
+
+    constructor(code: number, message?: string | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
+        this.code = code;
+        if(message) this.message = message;
+    }
+}
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -1056,7 +1055,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     sendResponse(res, <HTMLStatus>result[1]);
                 }else
                 {
-                    sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
+                    sendResponse(res, new HTMLStatus(200, answer));
                 }
             }
         );
@@ -1272,7 +1271,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                         result.forEach(value => {
                             if (value) {
                                 if (value.code === 201 && warningForInactiveRoom) {
-                                    value.message?.concat(" Warning: Shift-array contained inactive rooms!");
+                                    if(typeof value.message === 'string') value.message?.concat(" Warning: Shift-array contained inactive rooms!");
                                 }
                                 sendResponse(res, value);
                             }
