@@ -280,7 +280,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
 app.get('/staff', jsonParser, (req: Request, res: Response)=>{
     getStaff(0, req, res);
 });
-app.get('/staff/find', jsonParser, (req: Request, res: Response)=>{
+app.post('/staff/find', jsonParser, (req: Request, res: Response)=>{
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
@@ -504,7 +504,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         }
     );
 });
-app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
+app.post('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
