@@ -1496,7 +1496,7 @@ function overlappingPeriodOfTime(start: string | number | Date, end: string | nu
  * @param endPOT
  * @returns true Iff (start, end) is before or During (startPOT, endPOT)
  */
-function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
+export function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
 
