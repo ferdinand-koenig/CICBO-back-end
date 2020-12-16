@@ -7,7 +7,7 @@ import 'mocha';
 chai.use(chaiHttp);
 const expect = chai.expect;
 
-describe('Testing guests', () => {
+describe('Testing guest', () => {
     it('Getting guest 10000 and expecting not found', () => {
         return chai.request(app.app).get('/guest/10000')
             .then(res => {

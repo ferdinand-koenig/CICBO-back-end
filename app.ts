@@ -190,7 +190,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                                 callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                             }else {
                                 console.log("Shift object created.");
-                                callback(null, new HTMLStatus(201, "Staff member created."));
+                                callback(null, new HTMLStatus(201, id.toString()));
                             }
                         }
                     );
@@ -437,7 +437,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                                             callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                                         }else {
                                             console.log("Guest created.");
-                                            callback(null, new HTMLStatus(201, "Guest created."));
+                                            callback(null, new HTMLStatus(201, id.id));
                                         }
                                     }
                                 );
