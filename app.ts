@@ -1080,6 +1080,11 @@ app.use(function(err: { message: never; status: never; }, req: Request, res: Res
 });
 
 //functions
+/**
+ * Sends Response and closes the connection
+ * @param res express response object
+ * @param status HTMLStatus with code and optionally message
+ */
 function sendResponse(res: Response, status: HTMLStatus): void{
     if(!status.message){
         res.sendStatus(status.code);
@@ -1335,6 +1340,19 @@ function getStaff(mode: number, req: Request, res: Response){
     );
 }
 
+/**
+ * Helper for getStaff(...) and Get alarm
+ * Is accessing the collections to create the staff-objects
+ * @param staffCollection
+ * @param staffShiftCollection
+ * @param roomCollection
+ * @param shiftRoomCollection
+ * @param mode see getStaff(...)
+ * @param staffId
+ * @param searchFilter
+ * @param sortByName
+ * @param callback async.series callback
+ */
 function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: InternalSearchFilter, sortByName: boolean, callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }):void{
     let staffs: Array<InternalStaffSchema>;
     staffCollection.find(mode ?
@@ -1387,6 +1405,18 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
+/**
+ * Single asynchronous iteration of get alarm
+ * Used to find all rooms with potential exposure to covid
+ * @param roomsToDo
+ * @param roomsDone
+ * @param staffIDs
+ * @param shiftRoomCollection
+ * @param staffShiftCollection
+ * @param start
+ * @param end
+ * @returns Promise<{roomsToDo: number[], roomsDone: number[], staffIDs: number[]}> Promise with Object containing the roomsToDo for the next step, roomsDone (rooms that are already processed) and with staffIDs all IDs of the staff members
+ */
 async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<{roomsToDo: number[], roomsDone: number[], staffIDs: number[]}>{
     return new Promise((resolve) => {
         const newStaffIDs: Array<number>= [];
@@ -1464,7 +1494,7 @@ function overlappingPeriodOfTime(start: string | number | Date, end: string | nu
  * @param end
  * @param startPOT
  * @param endPOT
- * @returns true Iff (start - end) is before or During (startPOT, endPOT)
+ * @returns true Iff (start, end) is before or During (startPOT, endPOT)
  */
 function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
