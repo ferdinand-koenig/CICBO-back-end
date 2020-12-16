@@ -31,8 +31,6 @@ const validate = require('jsonschema').validate;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const async = require('async');
 
-//outsourcen, sodass 1. Mongo eigenen Klasse?
-// CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
 //classes
@@ -198,7 +196,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                     );
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -267,8 +265,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                //console.table(err);
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -346,7 +343,7 @@ app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                         );
                     }
                 ],
-                (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                (err: Error, result: Array<HTMLStatus | undefined>) => {
                     mongoClient.close();
                     console.log("Connection closed.")
                     result.forEach(value => {
@@ -451,7 +448,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -501,7 +498,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        () => { //oder (err: Error, result: Array<any>) =>
+        () => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
@@ -552,7 +549,7 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
                     });
                 }
             ],
-            () => { //oder (err: Error, result: Array<any>) =>
+            () => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
@@ -595,7 +592,7 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                     });
                 }
             ],
-            (err: Error, result:Array<HTMLStatus | undefined>) => { //oder (err: Error, result: Array<any>) =>
+            (err: Error, result:Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 result.forEach(value => {
@@ -666,7 +663,6 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                     //calculate ID and insert
                     (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
                         if (roomExisting) {
-                            //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
                             guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error) => {
                                 if (err) {
                                     callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
@@ -680,7 +676,7 @@ app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                         }
                     }
                 ],
-                (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                (err: Error, result: Array<HTMLStatus | undefined>) => {
                     mongoClient.close();
                     console.log("Connection closed.")
                     result.forEach(value => {
@@ -730,7 +726,7 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: never, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: never, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -802,7 +798,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -875,7 +871,7 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -917,7 +913,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        (err: Error, result: Array<string | undefined>) => { //oder () =>
+        (err: Error, result: Array<string | undefined>) => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, result[1]));
@@ -1045,7 +1041,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<Array<InternalGuestSchema | InternalStaffSchema> | undefined | HTMLStatus>) => { //oder () =>
+            (err: Error, result: Array<Array<InternalGuestSchema | InternalStaffSchema> | undefined | HTMLStatus>) => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 
@@ -1265,7 +1261,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                             });
                         }
                     ],
-                    (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                    (err: Error, result: Array<HTMLStatus | undefined>) => {
                         mongoClient.close();
                         console.log("Connection closed.")
                         result.forEach(value => {
@@ -1331,7 +1327,7 @@ function getStaff(mode: number, req: Request, res: Response){
                 findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, mode, staffId, searchFilter, sortByName, callback);
             }
         ],
-        (err: Error, result: Array<never>) => { //oder () =>
+        (err: Error, result: Array<never>) => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, (mode===1) ? result[1][0] : result[1]));
@@ -1475,5 +1471,3 @@ function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string |
 }
 
 module.exports = app;
-
-//what is not checked (semicolons, return types of functions)
