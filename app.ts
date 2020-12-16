@@ -299,66 +299,81 @@ app.get('/staff/:staffId', jsonParser, (req: Request, res: Response)=>{
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
 });
 app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
-    const staff = req.body, staffId = parseInt(req.params.staffId);
-    if(!validate(staff, staffSchema, {required: true}).valid){
-        console.log("Not valid staff member (schema)");
-        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
-    }else if(!(staff.mail || staff.phone)){
-        console.log("Not valid staff member (missing mail or phone)");
-        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
-    }else{
-        console.log("Valid new staff member.");
-        let staffCollection: Collection, mongoClient: MongoClient;
-        async.series(
-            [
-                // Establish Covalent Analytics MongoDB connection
-                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
-                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        if(err){
-                            callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
-                        }else{
-                            mongoClient = client;
+    if(!isNormalInteger(req.params.staffId)) {
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        const staff = req.body, staffId = parseInt(req.params.staffId);
+        if (!validate(staff, staffSchema, {required: true}).valid) {
+            console.log("Not valid staff member (schema)");
+            sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
+        } else if (!(staff.mail || staff.phone)) {
+            console.log("Not valid staff member (missing mail or phone)");
+            sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
+        } else {
+            console.log("Valid new staff member.");
+            let staffCollection: Collection, mongoClient: MongoClient;
+            async.series(
+                [
+                    // Establish Covalent Analytics MongoDB connection
+                    (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
+                        MongoClient.connect(uri, {
+                            native_parser: true,
+                            useUnifiedTopology: true
+                        }, (err: Error, client: MongoClient) => {
+                            if (err) {
+                                callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                            } else {
+                                mongoClient = client;
 
-                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                            callback(null);
+                                staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                                callback(null);
+                            }
+                        });
+                    },
+                    //calculate ID and insert
+                    (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
+                        console.table(staff);
+                        staffCollection.updateOne(
+                            {id: staffId}, {$set: staff},
+                            (err: Error) => {
+                                if (err) {
+                                    callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                                } else {
+                                    console.log("Staff member updated.");
+                                    callback(null, new HTMLStatus(200, "Staff member updated."));
+                                }
+                            }
+                        );
+                    }
+                ],
+                (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                    mongoClient.close();
+                    console.log("Connection closed.")
+                    result.forEach(value => {
+                        if (value) {
+                            sendResponse(res, value);
                         }
                     });
-                },
-                //calculate ID and insert
-                (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
-                    console.table(staff);
-                    staffCollection.updateOne(
-                        {id: staffId}, {$set: staff},
-                        (err: Error) => {
-                            if(err){
-                                callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
-                            }else {
-                                console.log("Staff member updated.");
-                                callback(null, new HTMLStatus(200, "Staff member updated."));
-                            }
-                        }
-                    );
                 }
-            ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                mongoClient.close();
-                console.log("Connection closed.")
-                result.forEach(value => {
-                    if(value){
-                        sendResponse(res, value);
-                    }
-                });
-            }
-        );
+            );
+        }
     }
 });
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    manipulateShifts(true, req, res);
+    if(!isNormalInteger(req.params.staffId)){
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        manipulateShifts(true, req, res);
+    }
 });
 app.put('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    manipulateShifts(false, req, res);
+    if(!isNormalInteger(req.params.staffId)){
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        manipulateShifts(false, req, res);
+    }
 });
 
 //GUEST
@@ -595,79 +610,87 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
     }
 });
 app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
-    const guestId = parseInt(req.params.guestId);
-    const guest = req.body;
-    if(!validate(guest, guestSchema, {required: true}).valid){
-        console.log("Not valid guest (schema)");
-        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
-    }else if(!(guest.mail || guest.phone)) {
-        console.log("Not valid guest (missing mail or phone)");
-        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
-    }else if(guest.arrivedAt > guest.leftAt) {
-        console.log("Timestamps not correct!");
-        sendResponse(res, new HTMLStatus(400, "arrivedAt is after leftAt!"));
+    if(!isNormalInteger(req.params.guestId)) {
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
     }else{
-        console.log("Valid guest update.");
-        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, roomExisting: boolean;
-        async.series(
-            [
-                // Establish Covalent Analytics MongoDB connection
-                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
-                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        if(err){
-                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                        }else {
-                            mongoClient = client;
-                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                            callback(null);
-                        }
-                    });
-                },
-                //find room in db
-                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
-                    roomCollection.find({"number": guest.room.number}).toArray((err: Error, docs) => {
-                        if(err){
-                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                        }else {
-                            if (docs.length != 0) {
-                                console.log("Found room in database!");
-                                roomExisting = true;
-                                callback(null);
-                            } else {
-                                roomExisting = false;
-                                callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
-                            }
-                        }
-                    })
-                },
-                //calculate ID and insert
-                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
-                    if(roomExisting) {
-                        //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
-                        guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error) => {
-                            if(err){
+        const guestId = parseInt(req.params.guestId);
+        const guest = req.body;
+        if (!validate(guest, guestSchema, {required: true}).valid) {
+            console.log("Not valid guest (schema)");
+            sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
+        } else if (!(guest.mail || guest.phone)) {
+            console.log("Not valid guest (missing mail or phone)");
+            sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
+        } else if (guest.arrivedAt > guest.leftAt) {
+            console.log("Timestamps not correct!");
+            sendResponse(res, new HTMLStatus(400, "arrivedAt is after leftAt!"));
+        } else {
+            console.log("Valid guest update.");
+            let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient,
+                roomExisting: boolean;
+            async.series(
+                [
+                    // Establish Covalent Analytics MongoDB connection
+                    (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
+                        MongoClient.connect(uri, {
+                            native_parser: true,
+                            useUnifiedTopology: true
+                        }, (err: Error, client: MongoClient) => {
+                            if (err) {
                                 callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                            }else {
-                                console.log("Guest updated.");
-                                callback(null, new HTMLStatus(200, "Guest updated."));
+                            } else {
+                                mongoClient = client;
+                                guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                                roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                                callback(null);
                             }
                         });
-                    }else{
-                        callback(null);
+                    },
+                    //find room in db
+                    (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
+                        roomCollection.find({"number": guest.room.number}).toArray((err: Error, docs) => {
+                            if (err) {
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            } else {
+                                if (docs.length != 0) {
+                                    console.log("Found room in database!");
+                                    roomExisting = true;
+                                    callback(null);
+                                } else {
+                                    roomExisting = false;
+                                    callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                                }
+                            }
+                        })
+                    },
+                    //calculate ID and insert
+                    (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
+                        if (roomExisting) {
+                            //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
+                            guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error) => {
+                                if (err) {
+                                    callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                } else {
+                                    console.log("Guest updated.");
+                                    callback(null, new HTMLStatus(200, "Guest updated."));
+                                }
+                            });
+                        } else {
+                            callback(null);
+                        }
                     }
+                ],
+                (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                    mongoClient.close();
+                    console.log("Connection closed.")
+                    result.forEach(value => {
+                        if (value) {
+                            sendResponse(res, value);
+                        }
+                    });
                 }
-            ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                mongoClient.close();
-                console.log("Connection closed.")
-                result.forEach(value => {
-                    if(value){
-                        sendResponse(res, value);
-                    }
-                });
-            }
-        );
+            );
+        }
     }
 });
 app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
