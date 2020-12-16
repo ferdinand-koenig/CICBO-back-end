@@ -35,13 +35,13 @@ describe('Testing Staff', () => {
 })
 
 describe('Testing Comparison function for time periods', () => {
-    it('Test beforeOrDuringPeriodOfTime("2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20")', async () => {
+    it('Test true === beforeOrDuringPeriodOfTime("2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20")', async () => {
         expect(app.beforeOrDuringPeriodOfTime("2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20", "2020-10-22 04:20")).to.eql(true);
     });
-    it('Test beforeOrDuringPeriodOfTime("2020-10-22 03:20", "2020-10-22 04:20", "2020-10-22 05:20", "2020-10-22 06:20")', async () => {
+    it('Test true === beforeOrDuringPeriodOfTime("2020-10-22 03:20", "2020-10-22 04:20", "2020-10-22 05:20", "2020-10-22 06:20")', async () => {
         expect(app.beforeOrDuringPeriodOfTime("2020-10-22 03:20", "2020-10-22 04:20", "2020-10-22 05:20", "2020-10-22 06:20")).to.eql(true);
     });
-    it('Test beforeOrDuringPeriodOfTime("2020-10-22 08:20", "2020-10-22 06:20", "2020-10-22 03:20", "2020-10-22 05:20")', async () => {
+    it('Test false === beforeOrDuringPeriodOfTime("2020-10-22 08:20", "2020-10-22 06:20", "2020-10-22 03:20", "2020-10-22 05:20")', async () => {
         expect(app.beforeOrDuringPeriodOfTime("2020-10-22 08:20", "2020-10-22 06:20", "2020-10-22 03:20", "2020-10-22 05:20")).to.eql(false);
     });
 })

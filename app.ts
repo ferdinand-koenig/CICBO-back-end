@@ -82,9 +82,9 @@ interface InternalSearchFilter{
 //classes
 class HTMLStatus{
     code: number;
-    message?: string | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
+    message?: string | InternalGuestSchema[] |{ staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
 
-    constructor(code: number, message?: string | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
+    constructor(code: number, message?: string | InternalGuestSchema[] | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
         this.code = code;
         if(message) this.message = message;
     }
@@ -500,7 +500,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         () => {
             mongoClient.close();
             console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
+            sendResponse(res, new HTMLStatus(200, guests));
         }
     );
 });
