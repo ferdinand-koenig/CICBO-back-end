@@ -4,7 +4,7 @@
  * Module dependencies.
  */
 
-var app = require('../app.js');
+var app = require('../app.js').app;
 var debug = require('debug')('cicbo-back-end:server');
 var http = require('http');
 

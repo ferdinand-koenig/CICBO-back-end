@@ -1,3 +1,5 @@
 node_modules
 dist
 app.js
+test
+bin

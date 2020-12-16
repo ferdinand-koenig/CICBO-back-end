@@ -33,17 +33,6 @@ const async = require('async');
 
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
-//classes
-class HTMLStatus{
-    code: number;
-    message?: string;
-
-    constructor(code: number, message?: string) {
-        this.code = code;
-        if(message) this.message = message;
-    }
-}
-
 //interfaces
 interface InternalRoomSchema{
     number: number,
@@ -90,6 +79,16 @@ interface InternalSearchFilter{
     number?: number;
 }
 
+//classes
+class HTMLStatus{
+    code: number;
+    message?: string | InternalGuestSchema[] |{ staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
+
+    constructor(code: number, message?: string | InternalGuestSchema[] | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
+        this.code = code;
+        if(message) this.message = message;
+    }
+}
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -190,7 +189,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                                 callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                             }else {
                                 console.log("Shift object created.");
-                                callback(null, new HTMLStatus(201, "Staff member created."));
+                                callback(null, new HTMLStatus(201, id.toString()));
                             }
                         }
                     );
@@ -281,7 +280,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
 app.get('/staff', jsonParser, (req: Request, res: Response)=>{
     getStaff(0, req, res);
 });
-app.get('/staff/find', jsonParser, (req: Request, res: Response)=>{
+app.post('/staff/find', jsonParser, (req: Request, res: Response)=>{
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
@@ -437,7 +436,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                                             callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                                         }else {
                                             console.log("Guest created.");
-                                            callback(null, new HTMLStatus(201, "Guest created."));
+                                            callback(null, new HTMLStatus(201, id.id));
                                         }
                                     }
                                 );
@@ -501,11 +500,11 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         () => {
             mongoClient.close();
             console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
+            sendResponse(res, new HTMLStatus(200, guests));
         }
     );
 });
-app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
+app.post('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
@@ -1056,7 +1055,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     sendResponse(res, <HTMLStatus>result[1]);
                 }else
                 {
-                    sendResponse(res, new HTMLStatus(200, JSON.stringify(answer)));
+                    sendResponse(res, new HTMLStatus(200, answer));
                 }
             }
         );
@@ -1272,7 +1271,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                         result.forEach(value => {
                             if (value) {
                                 if (value.code === 201 && warningForInactiveRoom) {
-                                    value.message?.concat(" Warning: Shift-array contained inactive rooms!");
+                                    if(typeof value.message === 'string') value.message?.concat(" Warning: Shift-array contained inactive rooms!");
                                 }
                                 sendResponse(res, value);
                             }
@@ -1500,4 +1499,7 @@ function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string |
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
 
-module.exports = app;
+module.exports = {
+    app,
+    beforeOrDuringPeriodOfTime
+};
