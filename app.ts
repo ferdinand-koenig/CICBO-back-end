@@ -31,8 +31,6 @@ const validate = require('jsonschema').validate;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const async = require('async');
 
-//outsourcen, sodass 1. Mongo eigenen Klasse?
-// CHECK 2. Passwort outsourcen, sodass es nicht auf git landet
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
 //classes
@@ -198,7 +196,7 @@ app.post('/staff', jsonParser, (req: Request, res: Response) => {
                     );
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -267,8 +265,7 @@ app.delete('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                //console.table(err);
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -299,66 +296,81 @@ app.get('/staff/:staffId', jsonParser, (req: Request, res: Response)=>{
         sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
 });
 app.put('/staff/:staffId', jsonParser, (req: Request, res: Response) => {
-    const staff = req.body, staffId = parseInt(req.params.staffId);
-    if(!validate(staff, staffSchema, {required: true}).valid){
-        console.log("Not valid staff member (schema)");
-        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
-    }else if(!(staff.mail || staff.phone)){
-        console.log("Not valid staff member (missing mail or phone)");
-        sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
-    }else{
-        console.log("Valid new staff member.");
-        let staffCollection: Collection, mongoClient: MongoClient;
-        async.series(
-            [
-                // Establish Covalent Analytics MongoDB connection
-                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
-                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        if(err){
-                            callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
-                        }else{
-                            mongoClient = client;
+    if(!isNormalInteger(req.params.staffId)) {
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        const staff = req.body, staffId = parseInt(req.params.staffId);
+        if (!validate(staff, staffSchema, {required: true}).valid) {
+            console.log("Not valid staff member (schema)");
+            sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Staff member does not have right syntax. (Schema)\n".concat(validate(staff, staffSchema, {required: true})) : "Staff member does not have right syntax. (Schema)"));
+        } else if (!(staff.mail || staff.phone)) {
+            console.log("Not valid staff member (missing mail or phone)");
+            sendResponse(res, new HTMLStatus(400, "Staff member does not have right syntax. (Mail or phone is required)"));
+        } else {
+            console.log("Valid new staff member.");
+            let staffCollection: Collection, mongoClient: MongoClient;
+            async.series(
+                [
+                    // Establish Covalent Analytics MongoDB connection
+                    (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
+                        MongoClient.connect(uri, {
+                            native_parser: true,
+                            useUnifiedTopology: true
+                        }, (err: Error, client: MongoClient) => {
+                            if (err) {
+                                callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                            } else {
+                                mongoClient = client;
 
-                            staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
-                            callback(null);
+                                staffCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameStaff);
+                                callback(null);
+                            }
+                        });
+                    },
+                    //calculate ID and insert
+                    (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
+                        console.table(staff);
+                        staffCollection.updateOne(
+                            {id: staffId}, {$set: staff},
+                            (err: Error) => {
+                                if (err) {
+                                    callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
+                                } else {
+                                    console.log("Staff member updated.");
+                                    callback(null, new HTMLStatus(200, "Staff member updated."));
+                                }
+                            }
+                        );
+                    }
+                ],
+                (err: Error, result: Array<HTMLStatus | undefined>) => {
+                    mongoClient.close();
+                    console.log("Connection closed.")
+                    result.forEach(value => {
+                        if (value) {
+                            sendResponse(res, value);
                         }
                     });
-                },
-                //calculate ID and insert
-                (callback: (arg0: Error | null, arg1: HTMLStatus) => void) => {
-                    console.table(staff);
-                    staffCollection.updateOne(
-                        {id: staffId}, {$set: staff},
-                        (err: Error) => {
-                            if(err){
-                                callback(new Error("FATAL: Error in put staff " + staffId), new HTMLStatus(500, "FATAL: Error in put staff member ".concat(String(staffId)).concat(". Contact your admin.")));
-                            }else {
-                                console.log("Staff member updated.");
-                                callback(null, new HTMLStatus(200, "Staff member updated."));
-                            }
-                        }
-                    );
                 }
-            ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                mongoClient.close();
-                console.log("Connection closed.")
-                result.forEach(value => {
-                    if(value){
-                        sendResponse(res, value);
-                    }
-                });
-            }
-        );
+            );
+        }
     }
 });
 
 //SHIFT
 app.post('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    manipulateShifts(true, req, res);
+    if(!isNormalInteger(req.params.staffId)){
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        manipulateShifts(true, req, res);
+    }
 });
 app.put('/staff/:staffId/shift', jsonParser, (req: Request, res: Response) => {
-    manipulateShifts(false, req, res);
+    if(!isNormalInteger(req.params.staffId)){
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
+    }else {
+        manipulateShifts(false, req, res);
+    }
 });
 
 //GUEST
@@ -436,7 +448,7 @@ app.post('/guest', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -486,7 +498,7 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        () => { //oder (err: Error, result: Array<any>) =>
+        () => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
@@ -537,7 +549,7 @@ app.get('/guest/find', jsonParser, (req: Request, res: Response) => { //basic se
                     });
                 }
             ],
-            () => { //oder (err: Error, result: Array<any>) =>
+            () => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
@@ -580,7 +592,7 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                     });
                 }
             ],
-            (err: Error, result:Array<HTMLStatus | undefined>) => { //oder (err: Error, result: Array<any>) =>
+            (err: Error, result:Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 result.forEach(value => {
@@ -595,79 +607,86 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
     }
 });
 app.put('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
-    const guestId = parseInt(req.params.guestId);
-    const guest = req.body;
-    if(!validate(guest, guestSchema, {required: true}).valid){
-        console.log("Not valid guest (schema)");
-        sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
-    }else if(!(guest.mail || guest.phone)) {
-        console.log("Not valid guest (missing mail or phone)");
-        sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
-    }else if(guest.arrivedAt > guest.leftAt) {
-        console.log("Timestamps not correct!");
-        sendResponse(res, new HTMLStatus(400, "arrivedAt is after leftAt!"));
+    if(!isNormalInteger(req.params.guestId)) {
+        sendResponse(res, new HTMLStatus(400, "Invalid ID supplied"));
     }else{
-        console.log("Valid guest update.");
-        let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, roomExisting: boolean;
-        async.series(
-            [
-                // Establish Covalent Analytics MongoDB connection
-                (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
-                    MongoClient.connect(uri, {native_parser: true, useUnifiedTopology: true}, (err: Error, client: MongoClient) => {
-                        if(err){
-                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                        }else {
-                            mongoClient = client;
-                            guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
-                            roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
-                            callback(null);
-                        }
-                    });
-                },
-                //find room in db
-                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
-                    roomCollection.find({"number": guest.room.number}).toArray((err: Error, docs) => {
-                        if(err){
-                            callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                        }else {
-                            if (docs.length != 0) {
-                                console.log("Found room in database!");
-                                roomExisting = true;
-                                callback(null);
-                            } else {
-                                roomExisting = false;
-                                callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
-                            }
-                        }
-                    })
-                },
-                //calculate ID and insert
-                (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
-                    if(roomExisting) {
-                        //delete guest.room; //wahrscheinlich unnötig: Jetzt sollte auch der Raum updatebar sein
-                        guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error) => {
-                            if(err){
+        const guestId = parseInt(req.params.guestId);
+        const guest = req.body;
+        if (!validate(guest, guestSchema, {required: true}).valid) {
+            console.log("Not valid guest (schema)");
+            sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Guest does not have right syntax. (Schema)\n".concat(validate(guest, guestSchema, {required: true})) : "Guest does not have right syntax. (Schema)"));
+        } else if (!(guest.mail || guest.phone)) {
+            console.log("Not valid guest (missing mail or phone)");
+            sendResponse(res, new HTMLStatus(400, "Guest does not have right syntax. (Mail or phone is required)"));
+        } else if (guest.arrivedAt > guest.leftAt) {
+            console.log("Timestamps not correct!");
+            sendResponse(res, new HTMLStatus(400, "arrivedAt is after leftAt!"));
+        } else {
+            console.log("Valid guest update.");
+            let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient,
+                roomExisting: boolean;
+            async.series(
+                [
+                    // Establish Covalent Analytics MongoDB connection
+                    (callback: (error: Error | null, htmlStatus?: HTMLStatus) => void) => {
+                        MongoClient.connect(uri, {
+                            native_parser: true,
+                            useUnifiedTopology: true
+                        }, (err: Error, client: MongoClient) => {
+                            if (err) {
                                 callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
-                            }else {
-                                console.log("Guest updated.");
-                                callback(null, new HTMLStatus(200, "Guest updated."));
+                            } else {
+                                mongoClient = client;
+                                guestCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameGuest);
+                                roomCollection = client.db(dbSettings.dbName).collection(dbSettings.collectionNameRoom);
+                                callback(null);
                             }
                         });
-                    }else{
-                        callback(null);
+                    },
+                    //find room in db
+                    (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
+                        roomCollection.find({"number": guest.room.number}).toArray((err: Error, docs) => {
+                            if (err) {
+                                callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                            } else {
+                                if (docs.length != 0) {
+                                    console.log("Found room in database!");
+                                    roomExisting = true;
+                                    callback(null);
+                                } else {
+                                    roomExisting = false;
+                                    callback(null, new HTMLStatus(418, "I'm a teapot and not a valid room. (No existing room with this number)"));
+                                }
+                            }
+                        })
+                    },
+                    //calculate ID and insert
+                    (callback: (arg0: Error | null, arg1?: HTMLStatus | undefined) => void) => {
+                        if (roomExisting) {
+                            guestCollection.updateOne({id: guestId}, {$set: guest}, (err: Error) => {
+                                if (err) {
+                                    callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
+                                } else {
+                                    console.log("Guest updated.");
+                                    callback(null, new HTMLStatus(200, "Guest updated."));
+                                }
+                            });
+                        } else {
+                            callback(null);
+                        }
                     }
+                ],
+                (err: Error, result: Array<HTMLStatus | undefined>) => {
+                    mongoClient.close();
+                    console.log("Connection closed.")
+                    result.forEach(value => {
+                        if (value) {
+                            sendResponse(res, value);
+                        }
+                    });
                 }
-            ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
-                mongoClient.close();
-                console.log("Connection closed.")
-                result.forEach(value => {
-                    if(value){
-                        sendResponse(res, value);
-                    }
-                });
-            }
-        );
+            );
+        }
     }
 });
 app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
@@ -707,7 +726,7 @@ app.delete('/guest/:guestId', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: never, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: never, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -779,7 +798,7 @@ app.post('/room', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -852,7 +871,7 @@ app.delete('/room/:roomNr', jsonParser, (req: Request, res: Response) => {
                     }
                 }
             ],
-            (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+            (err: Error, result: Array<HTMLStatus | undefined>) => {
                 mongoClient.close();
                 console.log("Connection closed.")
                 result.forEach(value => {
@@ -894,7 +913,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
                 });
             }
         ],
-        (err: Error, result: Array<string | undefined>) => { //oder () =>
+        (err: Error, result: Array<string | undefined>) => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, result[1]));
@@ -1022,7 +1041,7 @@ app.get('/alarm', jsonParser, (req: Request, res: Response) => {
                     });
                 }
             ],
-            (err: Error, result: Array<Array<InternalGuestSchema | InternalStaffSchema> | undefined | HTMLStatus>) => { //oder () =>
+            (err: Error, result: Array<Array<InternalGuestSchema | InternalStaffSchema> | undefined | HTMLStatus>) => {
                 mongoClient.close();
                 console.log("Connection closed.");
                 
@@ -1061,6 +1080,11 @@ app.use(function(err: { message: never; status: never; }, req: Request, res: Res
 });
 
 //functions
+/**
+ * Sends Response and closes the connection
+ * @param res express response object
+ * @param status HTMLStatus with code and optionally message
+ */
 function sendResponse(res: Response, status: HTMLStatus): void{
     if(!status.message){
         res.sendStatus(status.code);
@@ -1242,7 +1266,7 @@ function manipulateShifts(add: boolean, req: Request, res: Response){
                             });
                         }
                     ],
-                    (err: Error, result: Array<HTMLStatus | undefined>) => { //oder () =>
+                    (err: Error, result: Array<HTMLStatus | undefined>) => {
                         mongoClient.close();
                         console.log("Connection closed.")
                         result.forEach(value => {
@@ -1308,7 +1332,7 @@ function getStaff(mode: number, req: Request, res: Response){
                 findStaff(staffCollection, staffShiftCollection, roomCollection, shiftRoomCollection, mode, staffId, searchFilter, sortByName, callback);
             }
         ],
-        (err: Error, result: Array<never>) => { //oder () =>
+        (err: Error, result: Array<never>) => {
             mongoClient.close();
             console.log("Connection closed.");
             sendResponse(res, new HTMLStatus(200, (mode===1) ? result[1][0] : result[1]));
@@ -1316,6 +1340,19 @@ function getStaff(mode: number, req: Request, res: Response){
     );
 }
 
+/**
+ * Helper for getStaff(...) and Get alarm
+ * Is accessing the collections to create the staff-objects
+ * @param staffCollection
+ * @param staffShiftCollection
+ * @param roomCollection
+ * @param shiftRoomCollection
+ * @param mode see getStaff(...)
+ * @param staffId
+ * @param searchFilter
+ * @param sortByName
+ * @param callback async.series callback
+ */
 function findStaff(staffCollection: Collection, staffShiftCollection: Collection, roomCollection: Collection, shiftRoomCollection: Collection, mode: number, staffId: number, searchFilter: InternalSearchFilter, sortByName: boolean, callback: { (arg0: null): void; (arg0: Error | null, arg1: InternalStaffSchema[] | HTMLStatus): void; }):void{
     let staffs: Array<InternalStaffSchema>;
     staffCollection.find(mode ?
@@ -1368,6 +1405,18 @@ function findStaff(staffCollection: Collection, staffShiftCollection: Collection
         });
 }
 
+/**
+ * Single asynchronous iteration of get alarm
+ * Used to find all rooms with potential exposure to covid
+ * @param roomsToDo
+ * @param roomsDone
+ * @param staffIDs
+ * @param shiftRoomCollection
+ * @param staffShiftCollection
+ * @param start
+ * @param end
+ * @returns Promise<{roomsToDo: number[], roomsDone: number[], staffIDs: number[]}> Promise with Object containing the roomsToDo for the next step, roomsDone (rooms that are already processed) and with staffIDs all IDs of the staff members
+ */
 async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<number>, staffIDs: Array<number>, shiftRoomCollection: Collection, staffShiftCollection: Collection, start:string, end:string): Promise<{roomsToDo: number[], roomsDone: number[], staffIDs: number[]}>{
     return new Promise((resolve) => {
         const newStaffIDs: Array<number>= [];
@@ -1445,12 +1494,10 @@ function overlappingPeriodOfTime(start: string | number | Date, end: string | nu
  * @param end
  * @param startPOT
  * @param endPOT
- * @returns true Iff (start - end) is before or During (startPOT, endPOT)
+ * @returns true Iff (start, end) is before or During (startPOT, endPOT)
  */
 function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
 
 module.exports = app;
-
-//what is not checked (semicolons, return types of functions)
