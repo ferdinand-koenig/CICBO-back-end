@@ -1500,4 +1500,7 @@ function beforeOrDuringPeriodOfTime(start: string | number | Date, end: string |
     return overlappingPeriodOfTime(start, end, startPOT, endPOT) || (new Date(start)) <= new Date(endPOT)
 }
 
-module.exports = app;
+module.exports = {
+    app,
+    beforeOrDuringPeriodOfTime
+};
