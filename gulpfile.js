@@ -12,6 +12,7 @@ function runTests(cb) {
     exec('mocha -r ts-node/register ./tests/app.test.ts', function (err, stdout, stderr) {
         console.log(stdout);
         console.log(stderr);
+        if(!err) console.log("\u001b[32m √\u001b[0m All tests passed");
         cb(err);
     });
 }
@@ -41,9 +42,10 @@ function minifyJS(cb) {
     console.log("\u001b[32m √\u001b[0m app.js minified")
     cb();
 }
-function checkPrototypeSecretsJSON(cb){
+function checkForSecretsJSON(cb){
     if (fs.existsSync('./secrets/mongo-settings-with-credentials.json')) {
         if(validate(JSON.parse(fs.readFileSync("./secrets/mongo-settings-with-credentials.json")), secretSchema, {required: true}).valid){
+            console.log("\n\u001b[32m √\u001b[0m Secrets-file is valid")
             cb();
         }else
             cb(new Error("\u001b[31m X\u001b[0m Secrets-file not valid (./secrets/mongo-settings-with-credentials.json)!"));
@@ -78,18 +80,15 @@ function createDocumentation() {
             version: true,
         }).on('end', ()=>{console.log("\n\u001b[32m √\u001b[0m Documentation created in './documentation/': open index.html in browser")}));
 }
-function installDevEnv(cb){
-    cb();
-}
 
-const build = series(runLinter, compileTypeScript, minifyJS, checkPrototypeSecretsJSON, runTests);
+const build = series(runLinter, compileTypeScript, minifyJS, checkForSecretsJSON, runTests);
 
 exports.lint = runLinter;
 exports.test = runTests;
 exports.compile = compileTypeScript;
 exports.min = minifyJS;
 exports.build = build;
-exports.start = series(checkPrototypeSecretsJSON, start);
+exports.start = series(checkForSecretsJSON, start);
 exports.doc = createDocumentation;
 
-exports.default = series(build, start);
+exports.default = series(build, createDocumentation, start);
