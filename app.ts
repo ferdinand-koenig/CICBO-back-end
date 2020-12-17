@@ -921,7 +921,7 @@ app.get('/room', jsonParser, (req: Request, res: Response) => {
 });
 
 //ALARM
-app.get('/alarm', jsonParser, (req: Request, res: Response) => {
+app.post('/alarm', jsonParser, (req: Request, res: Response) => {
     const searchFilter = req.body;
     if (!validate(searchFilter, alarmSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
