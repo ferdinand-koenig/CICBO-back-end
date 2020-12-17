@@ -17,11 +17,12 @@ CICBO (**C**ICBO **i**s a **C**orona **B**usiness **O**ptimizer) is a project th
    2.3 In *./secrets/* enter your settings and credentials in the provided JSON and rename it to *mongo-settings-with-credentials.json*
 
 ## Getting started
-- Installing development environment + documentation: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git & npm i & gulp doc```
-- Build: ```gulp build```
-- Start server: ```gulp start``` and go to localhost:3000
-- All together: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git & npm i & gulp```
-- Different single steps: See ```gulp --tasks```
+1. Installing development environment + documentation: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git & npm i & gulp doc```
+2. Insert your secret-JSON (see above) and
+    - Build: ```gulp build```
+    - Start server: ```gulp start``` and go to localhost:3000
+    - All together: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git & npm i & gulp```
+3. Different single steps: See ```gulp --tasks```
 
 ## Documentation
 - The API can be found [here](https://raw.githubusercontent.com/lipilli/CICBO/api-spec/specs/api.yaml).
