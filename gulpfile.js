@@ -78,11 +78,11 @@ function createDocumentation() {
         }).on('end', ()=>{console.log("\n\u001b[32m [V] Documentation created in './documentation/': open index.html in browser \u001b[0m")}));
 }
 
-const build = series(runLinter, compileTypeScript, minifyJS, checkForSecretsJSON, runTests);
+const build = series(runLinter, checkForSecretsJSON, compileTypeScript, minifyJS, runTests);
 
 exports.lint = runLinter;
 exports.test = runTests;
-exports.compile = compileTypeScript;
+exports.compile = series(checkForSecretsJSON,compileTypeScript);
 exports.min = minifyJS;
 exports.build = build;
 exports.start = series(checkForSecretsJSON, start);
