@@ -2,8 +2,9 @@ const secretSchema = require("./schema/secret.json");
 
 const { src, dest, series } = require("gulp");
 const eslint = require("gulp-eslint");
-const exec = require('child_process').exec;
 const uglify = require("gulp-uglify");
+const typedoc = require("gulp-typedoc");
+const exec = require('child_process').exec;
 const fs = require("fs");
 const validate = require('jsonschema').validate;
 
@@ -57,6 +58,29 @@ function start(cb){
         cb(err);
     });
 }
+function createDocumentation() {
+    return src(["./app.ts"])
+        .pipe(typedoc({
+            // TypeScript options (see typescript docs)
+            module: "commonjs",
+            target: "es5",
+            includeDeclarations: true,
+
+            // Output options (see typedoc docs)
+            out: "./documentation",
+            json: "./documentation/project.json",
+
+            // TypeDoc options (see typedoc docs)
+            name: "CICBO-back-end",
+            theme: "default",
+            exclude: "**/node_modules/**",
+            ignoreCompilerErrors: false,
+            version: true,
+        }).on('end', ()=>{console.log("\n\u001b[32m √\u001b[0m Documentation created in './documentation/': open index.html in browser")}));
+}
+function installDevEnv(cb){
+    cb();
+}
 
 const build = series(runLinter, compileTypeScript, minifyJS, checkPrototypeSecretsJSON, runTests);
 
@@ -66,5 +90,6 @@ exports.compile = compileTypeScript;
 exports.min = minifyJS;
 exports.build = build;
 exports.start = series(checkPrototypeSecretsJSON, start);
+exports.doc = createDocumentation;
 
 exports.default = series(build, start);
