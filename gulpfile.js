@@ -12,14 +12,14 @@ function runTests(cb) {
     exec('mocha -r ts-node/register ./tests/app.test.ts', function (err, stdout, stderr) {
         console.log(stdout);
         console.log(stderr);
-        if(!err) console.log("\u001b[32m √\u001b[0m All tests passed");
+        if(!err) console.log("\u001b[32m V\u001b[0m All tests passed");
         cb(err);
     });
 }
 function compileTypeScript(cb) {
     exec('tsc --build ./tsconfig.json', function (err, stdout, stderr) {
         console.log(stderr);
-        if(!err) console.log("\u001b[32m √\u001b[0m TypeScript compiled");
+        if(!err) console.log("\u001b[32m V\u001b[0m TypeScript compiled");
         cb(err);
     });
 }
@@ -30,7 +30,7 @@ function runLinter(cb) {
         .pipe(eslint.failAfterError())
         .on('end', () => {
             console.log(" ");
-            console.log("\u001b[32m √\u001b[0m Found no errors or warnings:\u001b[32m passed\u001b[0m");
+            console.log("\u001b[32m V\u001b[0m Found no errors or warnings:\u001b[32m passed\u001b[0m");
             cb();
         });
 }
@@ -39,13 +39,13 @@ function minifyJS(cb) {
         .pipe(uglify())
         .pipe(dest('./', {overwrite: true}))
     console.log(" ");
-    console.log("\u001b[32m √\u001b[0m app.js minified")
+    console.log("\u001b[32m V\u001b[0m app.js minified")
     cb();
 }
 function checkForSecretsJSON(cb){
     if (fs.existsSync('./secrets/mongo-settings-with-credentials.json')) {
         if(validate(JSON.parse(fs.readFileSync("./secrets/mongo-settings-with-credentials.json")), secretSchema, {required: true}).valid){
-            console.log("\n\u001b[32m √\u001b[0m Secrets-file is valid")
+            console.log("\n\u001b[32m V\u001b[0m Secrets-file is valid")
             cb();
         }else
             cb(new Error("\u001b[31m X\u001b[0m Secrets-file not valid (./secrets/mongo-settings-with-credentials.json)!"));
@@ -53,7 +53,7 @@ function checkForSecretsJSON(cb){
         cb(new Error("\u001b[31m X\u001b[0m Secrets-file not found (./secrets/mongo-settings-with-credentials.json)!"));
 }
 function start(cb){
-    console.log("\u001b[32m √\u001b[0m listening on port 3000");
+    console.log("\u001b[32m V\u001b[0m listening on port 3000");
     exec('node ./bin/www', function (err, stdout, stderr) {
         console.log(stdout);
         console.log(stderr);
@@ -78,14 +78,14 @@ function createDocumentation() {
             exclude: "**/node_modules/**",
             ignoreCompilerErrors: false,
             version: true,
-        }).on('end', ()=>{console.log("\n\u001b[32m √\u001b[0m Documentation created in './documentation/': open index.html in browser")}));
+        }).on('end', ()=>{console.log("\n\u001b[32m V\u001b[0m Documentation created in './documentation/': open index.html in browser")}));
 }
 
-const build = series(runLinter, compileTypeScript, minifyJS, checkForSecretsJSON, runTests);
+const build = series(runLinter, checkForSecretsJSON, compileTypeScript, minifyJS, runTests);
 
 exports.lint = runLinter;
 exports.test = runTests;
-exports.compile = compileTypeScript;
+exports.compile = series(checkForSecretsJSON,compileTypeScript);
 exports.min = minifyJS;
 exports.build = build;
 exports.start = series(checkForSecretsJSON, start);
