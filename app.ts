@@ -504,14 +504,24 @@ app.get('/guest', jsonParser, (req: Request, res: Response) => {
         }
     );
 });
-app.post('/guest/find', jsonParser, (req: Request, res: Response) => { //basic search. Supports only passing the searchFilter directly to mongo. No preprocessing.
+app.post('/guest/find', jsonParser, (req: Request, res: Response) => {
     const searchFilter = req.body;
     if (!validate(searchFilter, searchFilterSchema, {required: true}).valid) {
         console.log("Not valid searchFilter (schema)");
         sendResponse(res, new HTMLStatus(400, (app.get('env') === 'development') ? "Invalid search-filter-object. (Schema)\n".concat(validate(searchFilter, searchFilterSchema, {required: true})) : "Invalid search-filter-object. (Schema)"));
-    } else {
+    } else if(!((searchFilter.arrivedAt && searchFilter.leftAt) || (!searchFilter.arrivedAt && !searchFilter.leftAt))) {
+        console.log("Not properly set dates");
+        sendResponse(res, new HTMLStatus(400, "Either both dates should be set or none."));
+    }else {
+        let arrivedAt: string, leftAt: string;
         const sortByName : boolean = searchFilter.sortByName;
         delete searchFilter.sortByName;
+        if(searchFilter.arrivedAt && searchFilter.leftAt) {
+            arrivedAt = searchFilter.arrivedAt;
+            delete searchFilter.arrivedAt;
+            leftAt = searchFilter.leftAt;
+            delete searchFilter.leftAt;
+        }
         let guestCollection: Collection, roomCollection: Collection, mongoClient: MongoClient, guests: Array<InternalGuestSchema>;
         async.series(
             [
@@ -533,7 +543,7 @@ app.post('/guest/find', jsonParser, (req: Request, res: Response) => { //basic s
                         if(err){
                             callback(new Error("FATAL: Error"), new HTMLStatus(500, "FATAL: Error! Contact your admin."));
                         }else {
-                            guests = docs;
+                            guests = docs.filter(item => (arrivedAt && leftAt)? overlappingPeriodOfTime(item.arrivedAt, item.leftAt, arrivedAt, leftAt) : true);
                             let n = 0;
                             guests.forEach((value) => {
                                 delete value._id;
@@ -551,7 +561,7 @@ app.post('/guest/find', jsonParser, (req: Request, res: Response) => { //basic s
             () => {
                 mongoClient.close();
                 console.log("Connection closed.");
-                sendResponse(res, new HTMLStatus(200, JSON.stringify(guests)));
+                sendResponse(res, new HTMLStatus(200, guests));
             }
         );
     }
