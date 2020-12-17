@@ -5,7 +5,7 @@
   "scripts": {
     "start": "tsc --build ./tsconfig.json & node ./bin/www",
     "lint": "eslint . --ext .ts & eslint . --ext .js",
-    "test": "mocha -r ts-node/register ./tests/app.test.ts"
+    "test": "npx mocha -r ts-node/register ./tests/app.test.ts"
   },
   "dependencies": {
     "@types/async": "^3.2.5",
