@@ -85,9 +85,9 @@ interface InternalSearchFilter{
 //classes
 class HTMLStatus{
     code: number;
-    message?: string | InternalGuestSchema[] |{ staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
+    message?: string | InternalGuestSchema | InternalGuestSchema[] |{ staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; };
 
-    constructor(code: number, message?: string | InternalGuestSchema[] | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
+    constructor(code: number, message?: string | InternalGuestSchema | InternalGuestSchema[] | { staffMembers: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; guests: HTMLStatus | (InternalGuestSchema | InternalStaffSchema)[] | undefined; }) {
         this.code = code;
         if(message) this.message = message;
     }
@@ -599,7 +599,7 @@ app.get('/guest/:guestId', jsonParser, (req: Request, res: Response) =>{
                         roomCollection.findOne({number: guest.room.number}).then((doc) => {
                             guest.room.name = doc.name;
                             guest.room.active = doc.active;
-                            callback(null, new HTMLStatus(200, JSON.stringify(guest)));
+                            callback(null, new HTMLStatus(200, guest));
                         });
                     });
                 }
@@ -1347,7 +1347,7 @@ function getStaff(mode: number, req: Request, res: Response){
         (err: Error, result: Array<never>) => {
             mongoClient.close();
             console.log("Connection closed.");
-            sendResponse(res, new HTMLStatus(200, (mode===1) ? result[1][0] : result[1]));
+            sendResponse(res, new HTMLStatus((mode===1 && !result[1][0])? 404 : 200, (mode===1) ? result[1][0] : result[1]));
         }
     );
 }

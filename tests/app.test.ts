@@ -24,9 +24,8 @@ describe('Testing Staff', () => {
         expect(JSON.parse(res.text)).to.be.a('array');
     });
     it('Checking type of get /staff/0', async () => {
-        const res = await chai.request(app.app).get('/staff/100');
-        expect(res).to.have.status(200);
-        if (res.text === 'OK') {
+        const res = await chai.request(app.app).get('/staff/0');
+        if (res.status === 404) {
             expect(true).to.eql(true);
         } else {
             expect(JSON.parse(res.text)).to.be.a('object');
