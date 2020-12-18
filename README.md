@@ -17,10 +17,10 @@ CICBO (**C**ICBO **i**s a **C**orona **B**usiness **O**ptimizer) is a project th
    2.3 In *./secrets/* enter your settings and credentials in the provided JSON and rename it to *mongo-settings-with-credentials.json*
 
 ## Getting started
-1. Installing development environment + documentation: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git & npm i & gulp doc```
-2. Insert your secret-JSON (see above) and
+1. Installing development environment + documentation: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git && cd CICBO-back-end && npm i && gulp doc```
+2. Insert your secret-JSON (see above 2.3) and
     - Build: ```gulp build```
-    - Start server: ```gulp start``` and go to localhost:3000
+    - Start server: ```gulp start``` and go to *localhost:3000*
     - All together: ```gulp```
 3. Different single steps: See ```gulp --tasks```
 
@@ -36,6 +36,14 @@ Lecturer: Danny Amor
 ## Extras
 - Unlock the true potential with a suited [front-end](https://github.com/lipilli/CICBO).
 - The different entities are checked by JSON-schema. These are accessible via e.g. ```GET [url]/schema/shift.json``` or by simply browsing to this path.
-
+   - alarm.json
+   - guest.json
+   - room.json
+   - searchFilter.json
+   - secret.json
+   - shift.json
+   - shifts.json
+   - staff.json
+   
 ## Github
 The project is available on https://github.com/ferdinand-dhbw/CICBO-back-end
