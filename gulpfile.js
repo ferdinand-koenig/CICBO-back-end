@@ -82,7 +82,7 @@ const build = series(runLinter, checkForSecretsJSON, compileTypeScript, minifyJS
 
 exports.lint = runLinter;
 exports.test = runTests;
-exports.compile = series(checkForSecretsJSON,compileTypeScript);
+exports.compile = series(checkForSecretsJSON, compileTypeScript);
 exports.min = minifyJS;
 exports.build = build;
 exports.start = series(checkForSecretsJSON, start);

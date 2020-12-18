@@ -31,6 +31,9 @@ const validate = require('jsonschema').validate;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const async = require('async');
 
+/**
+ * MongoDB uri
+ */
 const uri = dbSettings.protocol + "://" + dbSettings.credentials.user + ":" + dbSettings.credentials.pwd + "@" + dbSettings.uri + "/" + dbSettings.dbName + "?" + dbSettings.uriOptions;
 
 //interfaces
@@ -1090,7 +1093,7 @@ app.use(function(err: { message: never; status: never; }, req: Request, res: Res
 
 //functions
 /**
- * Sends Response and closes the connection
+ * Sends response and closes the connection
  * @param res express response object
  * @param status HTMLStatus with code and optionally message
  */
@@ -1104,7 +1107,7 @@ function sendResponse(res: Response, status: HTMLStatus): void{
 }
 
 /**
- * checks if a string is a positive integer value or zero
+ * Checks if a string is a positive integer value or zero
  * @param str
  * @returns boolean
  */
@@ -1488,6 +1491,13 @@ async function findRoomsIteration(roomsToDo: Array<number>, roomsDone: Array<num
     });
 }
 
+/**
+ * Checks if both periods of time do overlap
+ * @param start
+ * @param end
+ * @param startPOT
+ * @param endPOT
+ */
 function overlappingPeriodOfTime(start: string | number | Date, end: string | number | Date, startPOT: string | number | Date, endPOT: string | number | Date): boolean{
     start = new Date(start);
     end = new Date(end);
