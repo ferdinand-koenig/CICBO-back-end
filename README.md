@@ -17,16 +17,16 @@ CICBO (**C**ICBO **i**s a **C**orona **B**usiness **O**ptimizer) is a project th
    2.3 In *./secrets/* enter your settings and credentials in the provided JSON and rename it to *mongo-settings-with-credentials.json*
 
 ## Getting started
-1. Installing development environment + documentation: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git && cd CICBO-back-end && npm i && gulp doc```
+1. Installing development environment: ```git clone https://github.com/ferdinand-dhbw/CICBO-back-end.git && cd CICBO-back-end && npm i```
 2. Insert your secret-JSON (see above 2.3) and
     - Build: ```gulp build```
     - Start server: ```gulp start``` and go to *localhost:3000*
     - All together: ```gulp```
-3. Different single steps: See ```gulp --tasks```
+3. Different single tasks: See ```gulp --tasks```
 
 ## Documentation
 - The API can be found [here](https://raw.githubusercontent.com/lipilli/CICBO/api-spec/specs/api.yaml).
-- Creating a documentation with typedoc is part of the build-process, but can be done manually with ```gulp doc```
+- Creating a documentation with typedoc is part of the build process, but can be done manually with ```gulp doc```
 
 ## About
 This is the back-end of CICBO &mdash;  **C**ICBO **i**s a **C**orona **B**usiness **O**ptimizer.\
@@ -34,7 +34,7 @@ It is a students-project by Deborah Djon and Ferdinand Koenig for Web Engineerin
 Lecturer: Danny Amor
 
 ## Extras
-- Unlock the true potential with a suited [front-end](https://github.com/lipilli/CICBO).
+- Unlock the true potential with a suited [front-end](https://github.com/lipilli/CICBO) by placing the production environment right into the public folder.
 - The different entities are checked by JSON-schema. These are accessible via e.g. ```GET [url]/schema/shift.json``` or by simply browsing to this path.
    - alarm.json
    - guest.json
